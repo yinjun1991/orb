@@ -47,12 +47,17 @@ export async function dropCommand(issueId: string): Promise<void> {
       for (const repo of config.repos) {
         const repoPath = path.resolve(projectRoot, repo.path);
         const wtPath = path.join(worktreeDir, path.basename(repo.path));
+        const remote = repo.remote || 'origin';
         if (!fs.existsSync(wtPath)) continue;
         try {
           execSync(`git worktree remove ${wtPath} --force`, { cwd: repoPath, stdio: 'pipe' });
-        } catch {
-          // already removed, or not a worktree
-        }
+        } catch { /* already removed */ }
+        try {
+          execSync(`git branch -D ${issueId}`, { cwd: repoPath, stdio: 'pipe' });
+        } catch { /* branch already gone */ }
+        try {
+          execSync(`git push ${remote} --delete ${issueId}`, { cwd: repoPath, stdio: 'pipe' });
+        } catch { /* not pushed or already deleted */ }
       }
       fs.removeSync(worktreeDir);
     }

@@ -25,13 +25,14 @@ export async function cleanCommand(issueId: string): Promise<void> {
         if (!fs.existsSync(wtPath)) continue;
         try {
           execSync(`git worktree remove ${wtPath} --force`, { cwd: repoPath, stdio: 'pipe' });
-        } catch {
-          // already removed
-        }
+        } catch { /* already removed */ }
+        try {
+          execSync(`git branch -D ${issueId}`, { cwd: repoPath, stdio: 'pipe' });
+        } catch { /* branch already gone */ }
       }
     }
     fs.removeSync(worktreeDir);
-    console.log(`${chalk.gray('Removed')} worktrees/${issueId}/`);
+    console.log(`${chalk.gray('Removed')} worktrees/${issueId}/ and branch ${issueId}`);
   }
 
   updateIssueStatus(projectRoot, issueId, 'done');
