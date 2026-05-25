@@ -1,0 +1,26 @@
+{
+  "name": "orb",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI tool for orchestrating AI agents across the full development pipeline",
+  "bin": {
+    "orb": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && cp -r templates dist/",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
+    "ora": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
