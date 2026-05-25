@@ -59,4 +59,4 @@ For each new bug found, create `bug<n>.md` with this structure:
 - **Fix suggestion** (optional): how to resolve it
 ```
 
-After creating bug files, add entries to `issues/<issue>/bugs.md` with status=unresolved.
+After creating bug files, add entries to `issues/<issue>/bugs.md` with status=unresolved. Leave the `Block reason` column empty for unresolved bugs.

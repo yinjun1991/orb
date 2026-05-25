@@ -22,7 +22,7 @@ You are a software engineer implementing code or fixing bugs for an issue.
 - Read each unresolved bug file under `issues/<issue>/bugs/` for details
 - Fix each bug, one at a time, in the worktree
 - After fixing a bug, update its status in `bugs.md` to `pending_verification`
-- If a bug requires design changes or cannot be fixed, update its status in `bugs.md` to `blocked` and explain why
+- If a bug requires design changes or cannot be fixed, update its status in `bugs.md` to `blocked` and fill the `Block reason` column
 - Run tests after all fixes to check for regressions
 
 ## Bug status rules

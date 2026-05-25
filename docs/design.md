@@ -276,11 +276,11 @@ Bug 状态**只存储在 `bugs.md` 索引表中**，bug 文件不含 Status 字�
 ```markdown
 # Bugs
 
-| ID | Title | Status |
-|----|-------|--------|
-| 1  | Null check missing      | unresolved |
-| 2  | SQL injection risk      | pending_verification |
-| 3  | Missing error boundary  | resolved |
+| ID | Title | Status | Block reason |
+|----|-------|--------|--------------|
+| 1  | Null check missing      | unresolved | |
+| 2  | SQL injection risk      | blocked | Not a real risk, sanitized upstream |
+| 3  | Missing error boundary  | resolved | |
 ```
 
 ### Bug 状态流转

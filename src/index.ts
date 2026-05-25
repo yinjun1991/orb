@@ -86,9 +86,10 @@ program
   .description('Block bugs to skip them in review')
   .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
   .argument('<bugNums>', 'bug numbers, comma-separated (e.g. 1,2,3)')
-  .action(async (issueId: string, bugNums: string) => {
-    await blockCommand(issueId, bugNums);
+  .argument('[reason]', 'reason for blocking (optional)')
+  .action(async (issueId: string, bugNums: string, reason?: string) => {
+    await blockCommand(issueId, bugNums, reason);
   })
-  .addHelpText('after', '\nExamples:\n  orbc block f1 3       # block bug #3\n  orbc block f1 1,2,4   # block multiple bugs');
+  .addHelpText('after', '\nExamples:\n  orbc block f1 3                            # block without reason\n  orbc block f1 1,2 "not a real risk"        # block with reason');
 
 program.parse();
