@@ -5,38 +5,40 @@ import { execSync } from 'child_process';
 import chalk from 'chalk';
 import * as readline from 'readline';
 
-export async function dropCommand(issueId: string): Promise<void> {
+export async function dropCommand(issueId: string, opts: { force?: boolean }): Promise<void> {
   const projectRoot = findProjectRoot();
   if (!projectRoot) {
     console.error(chalk.red('Error: Not in an orb project.'));
     process.exit(1);
   }
 
-  // Try to read issue title for the confirmation prompt
   const issueDir = path.join(projectRoot, 'issues', issueId);
-  let title = issueId;
-  if (fs.existsSync(issueDir)) {
-    const issueMd = fs.readFileSync(path.join(issueDir, 'issue.md'), 'utf-8');
-    const titleMatch = issueMd.match(/^# (.+)$/m);
-    if (titleMatch) title = titleMatch[1];
-  }
 
-  console.log(chalk.bold(`Drop issue ${issueId}: ${title}`));
-  console.log();
-  console.log(chalk.red('  This will permanently delete:'));
-  if (fs.existsSync(issueDir)) {
-    console.log(`    ${chalk.gray('•')} issues/${issueId}/   (all docs, bugs, code plan)`);
-  }
-  console.log(`    ${chalk.gray('•')} worktrees/${issueId}/ (if exists)`);
-  console.log(`    ${chalk.gray('•')} local and remote branch ${issueId} (if exists)`);
-  console.log(`    ${chalk.gray('•')} the ${issueId} entry from issues.md`);
-  console.log();
-  console.log(chalk.red('  This cannot be undone.'));
+  if (!opts.force) {
+    let title = issueId;
+    if (fs.existsSync(issueDir)) {
+      const issueMd = fs.readFileSync(path.join(issueDir, 'issue.md'), 'utf-8');
+      const titleMatch = issueMd.match(/^# (.+)$/m);
+      if (titleMatch) title = titleMatch[1];
+    }
 
-  const confirmed = await confirm(chalk.red(`Type "${issueId}" to confirm: `), issueId);
-  if (!confirmed) {
-    console.log(chalk.gray('Cancelled.'));
-    return;
+    console.log(chalk.bold(`Drop issue ${issueId}: ${title}`));
+    console.log();
+    console.log(chalk.red('  This will permanently delete:'));
+    if (fs.existsSync(issueDir)) {
+      console.log(`    ${chalk.gray('•')} issues/${issueId}/   (all docs, bugs, code plan)`);
+    }
+    console.log(`    ${chalk.gray('•')} worktrees/${issueId}/ (if exists)`);
+    console.log(`    ${chalk.gray('•')} local and remote branch ${issueId} (if exists)`);
+    console.log(`    ${chalk.gray('•')} the ${issueId} entry from issues.md`);
+    console.log();
+    console.log(chalk.red('  This cannot be undone.'));
+
+    const confirmed = await confirm(chalk.red(`Type "${issueId}" to confirm: `), issueId);
+    if (!confirmed) {
+      console.log(chalk.gray('Cancelled.'));
+      return;
+    }
   }
 
   const configPath = path.join(projectRoot, '.orb.yaml');
@@ -81,7 +83,12 @@ function runOrWarn(cmd: string, cwd: string): void {
   try {
     execSync(cmd, { cwd, stdio: 'pipe' });
   } catch (err: any) {
-    console.error(chalk.yellow(`  Warning: ${err.stderr?.toString().trim() || err.message}`));
+    const msg = err.stderr?.toString().trim() || err.message || '';
+    // Expected: branch not pushed, not yet created, already deleted
+    if (msg.includes('remote ref does not exist')) return;
+    if (msg.includes('branch not found')) return;
+    if (msg.includes('is not a working tree')) return;
+    console.error(chalk.yellow(`  Warning: ${msg}`));
   }
 }
 

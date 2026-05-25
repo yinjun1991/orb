@@ -117,9 +117,10 @@ program
   .command('drop')
   .description('Permanently delete an issue and its worktree')
   .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
-  .action(async (issueId: string) => {
-    await dropCommand(issueId);
+  .option('-f, --force', 'Skip confirmation prompt')
+  .action(async (issueId: string, opts) => {
+    await dropCommand(issueId, { force: opts.force });
   })
-  .addHelpText('after', '\nExample:\n  orbc drop f1\n  This cannot be undone. You will be asked to confirm by retyping the issue ID.');
+  .addHelpText('after', '\nExamples:\n  orbc drop f1         # prompts for confirmation\n  orbc drop f1 -f      # force, no confirmation');
 
 program.parse();
