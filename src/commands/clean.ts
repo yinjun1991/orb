@@ -23,12 +23,8 @@ export async function cleanCommand(issueId: string): Promise<void> {
         const repoPath = path.resolve(projectRoot, repo.path);
         const wtPath = path.join(worktreeDir, path.basename(repo.path));
         if (!fs.existsSync(wtPath)) continue;
-        try {
-          execSync(`git worktree remove ${wtPath} --force`, { cwd: repoPath, stdio: 'pipe' });
-        } catch { /* already removed */ }
-        try {
-          execSync(`git branch -D ${issueId}`, { cwd: repoPath, stdio: 'pipe' });
-        } catch { /* branch already gone */ }
+        runOrWarn(`git worktree remove ${wtPath} --force`, repoPath);
+        runOrWarn(`git branch -D ${issueId}`, repoPath);
       }
     }
     fs.removeSync(worktreeDir);
@@ -37,6 +33,15 @@ export async function cleanCommand(issueId: string): Promise<void> {
 
   updateIssueStatus(projectRoot, issueId, 'done');
   console.log(chalk.green(`${issueId} cleaned.`));
+}
+
+/** Run a shell command, print a warning on failure instead of crashing. */
+function runOrWarn(cmd: string, cwd: string): void {
+  try {
+    execSync(cmd, { cwd, stdio: 'pipe' });
+  } catch (err: any) {
+    console.error(chalk.yellow(`  Warning: ${err.stderr?.toString().trim() || err.message}`));
+  }
 }
 
 function updateIssueStatus(projectRoot: string, issueId: string, newStatus: string): void {

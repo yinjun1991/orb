@@ -18,7 +18,6 @@ export async function dropCommand(issueId: string): Promise<void> {
     process.exit(1);
   }
 
-  // Read issue title for confirmation
   const issueMd = fs.readFileSync(path.join(issueDir, 'issue.md'), 'utf-8');
   const titleMatch = issueMd.match(/^# (.+)$/m);
   const title = titleMatch?.[1] || issueId;
@@ -28,6 +27,7 @@ export async function dropCommand(issueId: string): Promise<void> {
   console.log(chalk.red('  This will permanently delete:'));
   console.log(`    ${chalk.gray('•')} issues/${issueId}/   (all docs, bugs, code plan)`);
   console.log(`    ${chalk.gray('•')} worktrees/${issueId}/ (all uncommitted work)`);
+  console.log(`    ${chalk.gray('•')} local and remote branch ${issueId}`);
   console.log(`    ${chalk.gray('•')} the ${issueId} entry from issues.md`);
   console.log();
   console.log(chalk.red('  This cannot be undone.'));
@@ -38,7 +38,6 @@ export async function dropCommand(issueId: string): Promise<void> {
     return;
   }
 
-  // Remove worktrees
   const configPath = path.join(projectRoot, '.orb.yaml');
   if (fs.existsSync(configPath)) {
     const config = parseOrbConfig(fs.readFileSync(configPath, 'utf-8'));
@@ -49,28 +48,28 @@ export async function dropCommand(issueId: string): Promise<void> {
         const wtPath = path.join(worktreeDir, path.basename(repo.path));
         const remote = repo.remote || 'origin';
         if (!fs.existsSync(wtPath)) continue;
-        try {
-          execSync(`git worktree remove ${wtPath} --force`, { cwd: repoPath, stdio: 'pipe' });
-        } catch { /* already removed */ }
-        try {
-          execSync(`git branch -D ${issueId}`, { cwd: repoPath, stdio: 'pipe' });
-        } catch { /* branch already gone */ }
-        try {
-          execSync(`git push ${remote} --delete ${issueId}`, { cwd: repoPath, stdio: 'pipe' });
-        } catch { /* not pushed or already deleted */ }
+        runOrWarn(`git worktree remove ${wtPath} --force`, repoPath);
+        runOrWarn(`git branch -D ${issueId}`, repoPath);
+        runOrWarn(`git push ${remote} --delete ${issueId}`, repoPath);
       }
       fs.removeSync(worktreeDir);
     }
   }
 
-  // Remove issue directory
   fs.removeSync(issueDir);
-
-  // Remove from issues.md
   removeFromIndex(projectRoot, issueId);
 
   console.log();
   console.log(chalk.gray(`${issueId} dropped.`));
+}
+
+/** Run a shell command, print a warning on failure instead of crashing. */
+function runOrWarn(cmd: string, cwd: string): void {
+  try {
+    execSync(cmd, { cwd, stdio: 'pipe' });
+  } catch (err: any) {
+    console.error(chalk.yellow(`  Warning: ${err.stderr?.toString().trim() || err.message}`));
+  }
 }
 
 function confirm(prompt: string, expected: string): Promise<boolean> {
