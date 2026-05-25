@@ -46,7 +46,7 @@ code-reviewer agent review 代码变更，发现 bug/问题后提交到 `bugs/` 
 ## issue 状态机
 
 ```
-[defining] → [designing] → [coding] → [reviewing] → [done]
+[defining] → [designing] → [coding] → [reviewing] → [merging] → [done]
                                                 ↑    │
                                                 └────┘
                                             fixing (自动 loop)
@@ -57,7 +57,8 @@ code-reviewer agent review 代码变更，发现 bug/问题后提交到 `bugs/` 
 - `coding`: 编码阶段，AI developer agent 执行 code_plan.md
 - `reviewing`: code review 阶段，自动 review→fix loop 运行中
 - `fixing`: developer agent 修复 code reviewer 发现的 bugs
-- `done`: issue 完成，等待合入主干
+- `merging`: PR 已创建，等待 GitHub 合入
+- `done`: PR 已合入，worktree 已清理
 
 状态迁移规则：
 - `defining` → `designing`: issue.md 就绪，人工触发
@@ -69,18 +70,17 @@ code-reviewer agent review 代码变更，发现 bug/问题后提交到 `bugs/` 
 
 ## Commands
 
-### `orb ic "issue title"`
+### `orbc ic "title"`
 
 创建 issue，分配编号、初始化目录结构和 worktree。
 
 流程：
 1. 在 issues.md 追加 issue 条目，分配编号（如 f1、f2）
-2. 在 issues/ 下创建 `f<n>/` 文件夹，填充 `issue.md`（含 title、背景、目标、非目标、约束）和 `base_version.json`
+2. 在 issues/ 下创建 `f<n>/` 文件夹，填充模板文件
 3. 在 worktrees/ 下创建 `f<n>/`，将所有 repos 以 worktree 形式 checkout 到该目录，分支名即为 issue 编号
-4. 创建 issues/f<n>/bugs/ 目录
 
 ```sh
-orb ic "issue title"
+orbc ic "Add user authentication"
 ```
 
 ### `orbc code f1`
@@ -101,9 +101,9 @@ orb ic "issue title"
 orbc code f1
 ```
 
-### `orb review f1`
+### `orbc review f1`
 
-启动 review→fix 自动 loop，这是 orb 的核心命令。
+启动 review→fix 自动 loop。
 
 流程：
 ```
@@ -134,13 +134,7 @@ orbc code f1
 - 每次 review 产出的 bugs 保留在 bugs/ 目录作为 review 记录
 
 ```sh
-orb review f1
-```
-
-可选参数 `--max-rounds` 指定最大 loop 轮数：
-
-```sh
-orb review f1 --max-rounds 5
+orbc review f1
 ```
 
 ### `orbc status [f1]`
@@ -176,19 +170,20 @@ Issue f1
     ✔ #3  Missing error boundary  (resolved)
 ```
 
-### `orb done f1`
+### `orbc pr f1`
 
-人工确认 issue 完成，清理 worktree。
-
-流程：
-1. 确认所有 bug 已 resolved，review 已通过
-2. 标记 issue 状态为 `done`
-3. 将 worktree 中的变更合入主干（或创建 PR，视项目配置）
-4. 清理 worktrees/f<n>/ 目录（可选保留）
-5. 更新 issues.md 中该 issue 状态
+Push issue 分支到 remote，使用 `gh` CLI 创建 GitHub PR 到 base_branch，打印 PR URL。代码合并由 GitHub 负责。
 
 ```sh
-orb done f1
+orbc pr f1
+```
+
+### `orbc clean f1`
+
+删除 worktree，标记 issue 为 done。在 PR 合并后运行。
+
+```sh
+orbc clean f1
 ```
 
 ### `orbc install-skills`

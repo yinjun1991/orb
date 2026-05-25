@@ -7,6 +7,7 @@ interface IssueEntry {
   id: string;
   title: string;
   status: string;
+  prUrl?: string;
 }
 
 interface BugEntry {
@@ -49,9 +50,15 @@ function readIssuesIndex(projectRoot: string): IssueEntry[] {
   const content = fs.readFileSync(indexPath, 'utf-8');
   const entries: IssueEntry[] = [];
   for (const line of content.split('\n')) {
-    const match = line.match(/^\|\s*(f\d+)\s*\|\s*(.+?)\s*\|\s*(\S+)\s*\|/);
+    // Match 3 or 4 columns: | ID | Title | Status | [PR] |
+    const match = line.match(/^\|\s*(f\d+)\s*\|\s*(.+?)\s*\|\s*(\S+)\s*\|(?:\s*(.*?)\s*\|)?$/);
     if (match) {
-      entries.push({ id: match[1], title: match[2].trim(), status: match[3] });
+      entries.push({
+        id: match[1],
+        title: match[2].trim(),
+        status: match[3],
+        prUrl: match[4]?.trim() || undefined,
+      });
     }
   }
   return entries;
@@ -81,7 +88,8 @@ function showAllIssues(entries: IssueEntry[]): void {
   console.log(chalk.bold('Issues:\n'));
   for (const entry of entries) {
     const icon = statusIcon(entry.status);
-    console.log(`  ${icon} ${chalk.cyan(entry.id)}  ${entry.title}  ${chalk.gray(`(${entry.status})`)}`);
+    const pr = entry.prUrl ? chalk.underline(`\n      ${entry.prUrl}`) : '';
+    console.log(`  ${icon} ${chalk.cyan(entry.id)}  ${entry.title}  ${chalk.gray(`(${entry.status})`)}${pr}`);
   }
   console.log();
 }
@@ -97,6 +105,9 @@ function showIssueDetail(projectRoot: string, issueId: string, allIssues: IssueE
   console.log(chalk.bold(`Issue ${issueId}`));
   console.log(`  ${icon}  ${issue.title}`);
   console.log(`  ${chalk.gray('Status:')}  ${issue.status}`);
+  if (issue.prUrl) {
+    console.log(`  ${chalk.gray('PR:')}     ${chalk.underline(issue.prUrl)}`);
+  }
   console.log();
 
   const bugs = readBugsIndex(projectRoot, issueId);
@@ -137,6 +148,7 @@ function statusIcon(status: string): string {
     case 'designing': return chalk.magenta('◉');
     case 'coding': return chalk.yellow('◉');
     case 'reviewing': return chalk.cyan('◉');
+    case 'merging': return chalk.blue('◉');
     case 'done': return chalk.green('✔');
     default: return chalk.gray('○');
   }

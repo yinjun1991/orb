@@ -19,15 +19,17 @@ orbc ic "Add 2FA"         # create issue f1
 
 orbc code f1              # AI implements the code plan
 orbc review f1            # automated review→fix loop
-orbc done f1              # merge and clean up
+orbc pr f1                # push and create GitHub PR
+orbc clean f1             # remove worktree
 ```
 
 ## Pipeline stages
 
 ```
 [defining] → [designing] → [coding] → [reviewing] → [done]
-    ↑             ↑           ↑            ↑
-  external AI  external AI   orbc code   orbc review
+    ↑             ↑           ↑            ↑           ↑
+  external AI  external AI   orbc code   orbc review  orbc pr
+                                                      orbc clean
 ```
 
 | Stage | Who | How |
@@ -36,7 +38,8 @@ orbc done f1              # merge and clean up
 | **Designing** | AI + you | Run `/orb-architect` to produce `tech_design.md` and `code_plan.md`. Review the output before proceeding. |
 | **Coding** | orbc | `orbc code f1` — developer agent implements the code plan in an isolated worktree. |
 | **Reviewing** | orbc | `orbc review f1` — automated loop: code-reviewer finds bugs → developer fixes → repeat until clean. |
-| **Done** | orbc | `orbc done f1` — merge and clean up the worktree. |
+| **PR** | orbc | `orbc pr f1` — push the issue branch and create a GitHub PR to the base branch. Merging is handled by GitHub. |
+| **Clean up** | orbc | `orbc clean f1` — remove the worktree and mark the issue as done. |
 
 ## Commands
 
@@ -124,12 +127,22 @@ orbc block f1 3                          # block bug #3
 orbc block f1 1,2 "not a real risk"      # block with reason
 ```
 
-### `orbc done f1`
+### `orbc pr f1`
 
-Mark an issue as done.
+Push the issue branch and create a GitHub PR to the base branch. Uses `gh` CLI — make sure you're authenticated (`gh auth login`).
 
 ```sh
-orbc done f1
+orbc pr f1
+```
+
+Prints the PR URL for each repo. Merging is handled by GitHub, not orbc.
+
+### `orbc clean f1`
+
+Remove the worktree and mark the issue as done. Run this after the PR is merged.
+
+```sh
+orbc clean f1
 ```
 
 ## What orbc does NOT do

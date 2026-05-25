@@ -238,7 +238,9 @@ function updateIssueStatus(projectRoot: string, issueId: string, newStatus: stri
   const updated = lines.map(line => {
     const match = line.match(new RegExp(`^\\|\\s*${issueId}\\s*\\|`));
     if (!match) return line;
-    return line.replace(/\|\s*\S+\s*\|$/, `| ${newStatus} |`);
+    const parts = line.split('|').map(c => c.trim());
+    parts[3] = newStatus;
+    return `| ${parts[1]} | ${parts[2]} | ${parts[3]} | ${parts[4] || ''} |`;
   });
 
   fs.writeFileSync(indexPath, updated.join('\n'));

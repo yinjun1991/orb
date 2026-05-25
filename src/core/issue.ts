@@ -16,6 +16,7 @@ const BASE_VERSION_FILE = 'base_version.json';
 const TEMPLATE_ISSUE = 'issue.md';
 const TEMPLATE_TECH_DESIGN = 'tech_design.md';
 const TEMPLATE_IMPLEMENTION_PLAN = 'code_plan.md';
+const TEMPLATE_ISSUES_INDEX = 'issues.md';
 
 /** Resolve the orb package root (for reading templates). */
 function getOrbRoot(): string {
@@ -131,10 +132,10 @@ export function createIssue(projectRoot: string, issueId: string, title: string,
 
   // Append to issues.md index
   const indexPath = path.join(issuesDir, ISSUES_INDEX);
-  const entry = `| ${issueId} | ${title} | defining |\n`;
+  const entry = `| ${issueId} | ${title} | defining | |\n`;
   if (fs.existsSync(indexPath)) {
     fs.appendFileSync(indexPath, entry);
   } else {
-    fs.writeFileSync(indexPath, `# Issues\n\n| ID | Title | Status |\n|---|---|---|\n${entry}`);
+    fs.writeFileSync(indexPath, readTemplate(TEMPLATE_ISSUES_INDEX) + '\n' + entry);
   }
 }

@@ -19,7 +19,7 @@ export interface IssueEntry {
   status: IssueStatus;
 }
 
-export type IssueStatus = 'defining' | 'designing' | 'coding' | 'reviewing' | 'done';
+export type IssueStatus = 'defining' | 'designing' | 'coding' | 'reviewing' | 'merging' | 'done';
 
 export interface BaseVersion {
   [repoName: string]: string; // repo name -> base commit SHA

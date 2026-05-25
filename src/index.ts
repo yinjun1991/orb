@@ -8,6 +8,8 @@ import { statusCommand } from './commands/status.js';
 import { codeCommand } from './commands/code.js';
 import { reviewCommand } from './commands/review.js';
 import { blockCommand } from './commands/block.js';
+import { cleanCommand } from './commands/clean.js';
+import { prCommand } from './commands/pr.js';
 import { installSkillsCommand } from './commands/install-skills.js';
 import fs from 'fs-extra';
 import path from 'path';
@@ -91,5 +93,23 @@ program
     await blockCommand(issueId, bugNums, reason);
   })
   .addHelpText('after', '\nExamples:\n  orbc block f1 3                            # block without reason\n  orbc block f1 1,2 "not a real risk"        # block with reason');
+
+program
+  .command('pr')
+  .description('Push branch and create a GitHub PR to base_branch')
+  .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
+  .action(async (issueId: string) => {
+    await prCommand(issueId);
+  })
+  .addHelpText('after', '\nExample:\n  orbc pr f1');
+
+program
+  .command('clean')
+  .description('Remove worktree and mark issue as done')
+  .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
+  .action(async (issueId: string) => {
+    await cleanCommand(issueId);
+  })
+  .addHelpText('after', '\nExample:\n  orbc clean f1');
 
 program.parse();
