@@ -32,21 +32,6 @@ function readTemplate(name: string): string {
 }
 
 /**
- * Find the project root by looking for .orb.yaml or AGENTS.md upward.
- */
-export function findProjectRoot(cwd: string = process.cwd()): string | null {
-  let dir = cwd;
-  while (true) {
-    if (fs.existsSync(path.join(dir, '.orb.yaml')) || fs.existsSync(path.join(dir, 'AGENTS.md'))) {
-      return dir;
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-
-/**
  * Get the next issue number by scanning existing issue directories.
  */
 export function getNextIssueId(projectRoot: string): string {

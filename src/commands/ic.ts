@@ -1,5 +1,5 @@
-import { findProjectRoot, getNextIssueId, createIssue } from '../core/issue.js';
-import { OrbConfig } from '../types.js';
+import { findProjectRoot, parseOrbConfig } from '../core/config.js';
+import { getNextIssueId, createIssue } from '../core/issue.js';
 import fs from 'fs-extra';
 import path from 'path';
 import chalk from 'chalk';
@@ -12,15 +12,15 @@ export async function icCommand(title: string): Promise<void> {
     process.exit(1);
   }
 
-  // Read config
   const configPath = path.join(projectRoot, '.orb.yaml');
-  let config: OrbConfig | null = null;
-  if (fs.existsSync(configPath)) {
-    config = parseOrbConfig(fs.readFileSync(configPath, 'utf-8'));
+  if (!fs.existsSync(configPath)) {
+    console.error(chalk.red('Error: .orb.yaml not found.'));
+    process.exit(1);
   }
 
-  if (!config || config.repos.length === 0) {
-    console.error(chalk.red('Error: .orb.yaml is missing or has no repos configured.'));
+  const config = parseOrbConfig(fs.readFileSync(configPath, 'utf-8'));
+  if (config.repos.length === 0) {
+    console.error(chalk.red('Error: No repos configured in .orb.yaml.'));
     process.exit(1);
   }
 
@@ -40,63 +40,4 @@ export async function icCommand(title: string): Promise<void> {
     spinner.fail(`Failed to create issue: ${err.message}`);
     process.exit(1);
   }
-}
-
-function parseOrbConfig(content: string): OrbConfig {
-  const config: OrbConfig = { agent: 'cc', repos: [] };
-
-  const lines = content.split('\n');
-  let currentRepo: Record<string, string> | null = null;
-  let repoIndex = 0;
-
-  function finalizeRepo() {
-    if (!currentRepo) return;
-    repoIndex++;
-
-    // Validate required fields
-    if (!currentRepo.path) {
-      console.error(chalk.red(`Error: repo #${repoIndex} in .orb.yaml is missing "path".`));
-      process.exit(1);
-    }
-    if (!currentRepo.base_branch) {
-      console.error(chalk.red(`Error: repo "${currentRepo.path}" in .orb.yaml is missing "base_branch".`));
-      process.exit(1);
-    }
-
-    // Default remote to 'origin'
-    if (!currentRepo.remote) {
-      currentRepo.remote = 'origin';
-    }
-
-    config.repos.push(currentRepo as any);
-    currentRepo = null;
-  }
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-
-    if (trimmed.startsWith('agent:')) {
-      const val = trimmed.split(':')[1]?.trim().replace(/"/g, '');
-      if (val === 'cc' || val === 'codex') config.agent = val;
-    } else if (trimmed.startsWith('max_review_rounds:')) {
-      config.max_review_rounds = parseInt(trimmed.split(':')[1]?.trim() || '3', 10);
-    } else if (trimmed === 'repos:') {
-      // beginning of repos list
-    } else if (trimmed.startsWith('- path:')) {
-      finalizeRepo();
-      currentRepo = { path: extractYamlValue(trimmed, 'path') };
-    } else if (currentRepo) {
-      if (trimmed.startsWith('remote:')) currentRepo.remote = extractYamlValue(trimmed, 'remote');
-      else if (trimmed.startsWith('base_branch:')) currentRepo.base_branch = extractYamlValue(trimmed, 'base_branch');
-    }
-  }
-  finalizeRepo();
-
-  return config;
-}
-
-function extractYamlValue(line: string, key: string): string {
-  const val = line.split(':').slice(1).join(':').trim();
-  return val.replace(/^["']|["']$/g, '');
 }

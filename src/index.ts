@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { icCommand } from './commands/ic.js';
+import { syncCommand } from './commands/sync.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -22,6 +23,13 @@ program
   .argument('<title>', 'issue title')
   .action(async (title: string) => {
     await icCommand(title);
+  });
+
+program
+  .command('sync')
+  .description('Sync all repos to latest on their base branches')
+  .action(async () => {
+    await syncCommand();
   });
 
 program.parse();
