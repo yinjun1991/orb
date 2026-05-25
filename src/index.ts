@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { icCommand } from './commands/ic.js';
 import { syncCommand } from './commands/sync.js';
 import { initCommand } from './commands/init.js';
+import { statusCommand } from './commands/status.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -38,6 +39,14 @@ program
   .description('Sync all repos to latest on their base branches')
   .action(async () => {
     await syncCommand();
+  });
+
+program
+  .command('status')
+  .description('Show issue status and bug list')
+  .argument('[issueId]', 'issue ID (e.g. f1), omit to list all issues')
+  .action(async (issueId?: string) => {
+    await statusCommand(issueId);
   });
 
 program.parse();

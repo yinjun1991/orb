@@ -139,18 +139,37 @@ orb review f1
 orb review f1 --max-rounds 5
 ```
 
-### `orb status [f1]`
+### `orbc status [f1]`
 
 查看 issue 或整个 project 的当前状态。
 
-不指定 issue 编号时，展示所有 issue 的状态列表；指定时展示该 issue 的详细状态，包括：
-- 当前阶段
-- bug 列表及状态
-- worktree 分支信息
+不指定 issue 编号时，列出所有 issue 及各自状态：
 
 ```sh
-orb status       # 展示所有 issue
-orb status f1    # 展示 f1 详情
+$ orbc status
+Issues:
+
+  ◉ f1  Add login  (defining)
+  ◉ f2  Fix dashboard  (designing)
+```
+
+指定 issue 编号时，展示该 issue 详情，包括状态 + bug 列表：
+
+```sh
+$ orbc status f1
+Issue f1
+  ◉  Add login
+  Status:  defining
+
+  Bugs (3 total):
+    ✖ unresolved: 1
+    ◷ pending_verification: 1
+    ✔ resolved: 1
+    ⊘ blocked: 0
+
+    ✖ #1  Null check missing in handler  (unresolved)
+    ◷ #2  SQL injection in query builder  (pending_verification)
+    ✔ #3  Missing error boundary  (resolved)
 ```
 
 ### `orb done f1`
