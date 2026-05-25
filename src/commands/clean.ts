@@ -16,6 +16,7 @@ export async function cleanCommand(issueId: string): Promise<void> {
     ? parseOrbConfig(fs.readFileSync(configPath, 'utf-8'))
     : null;
 
+  // Clean worktree (if exists)
   const worktreeDir = path.join(projectRoot, 'worktrees', issueId);
   if (fs.existsSync(worktreeDir)) {
     if (config) {
@@ -24,11 +25,18 @@ export async function cleanCommand(issueId: string): Promise<void> {
         const wtPath = path.join(worktreeDir, path.basename(repo.path));
         if (!fs.existsSync(wtPath)) continue;
         runOrWarn(`git worktree remove ${wtPath} --force`, repoPath);
-        runOrWarn(`git branch -D ${issueId}`, repoPath);
       }
     }
     fs.removeSync(worktreeDir);
-    console.log(`${chalk.gray('Removed')} worktrees/${issueId}/ and branch ${issueId}`);
+    console.log(`${chalk.gray('Removed')} worktrees/${issueId}/`);
+  }
+
+  // Delete local branch (always try, even if worktree is gone)
+  if (config) {
+    for (const repo of config.repos) {
+      const repoPath = path.resolve(projectRoot, repo.path);
+      runOrWarn(`git branch -D ${issueId}`, repoPath);
+    }
   }
 
   updateIssueStatus(projectRoot, issueId, 'done');
