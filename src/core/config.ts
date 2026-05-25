@@ -24,7 +24,8 @@ export function findProjectRoot(cwd: string = process.cwd()): string | null {
 export function parseOrbConfig(content: string): OrbConfig {
   const config: OrbConfig = { agent: 'cc', repos: [] };
   const lines = content.split('\n');
-  let currentRepo: Record<string, string> | null = null;
+  let currentRepo: Record<string, any> | null = null;
+  let inCopyFiles = false;
   let repoIndex = 0;
 
   function finalizeRepo() {
@@ -60,10 +61,23 @@ export function parseOrbConfig(content: string): OrbConfig {
       // beginning of repos list
     } else if (trimmed.startsWith('- path:')) {
       finalizeRepo();
+      inCopyFiles = false;
       currentRepo = { path: extractYamlValue(trimmed, 'path') };
     } else if (currentRepo) {
-      if (trimmed.startsWith('remote:')) currentRepo.remote = extractYamlValue(trimmed, 'remote');
-      else if (trimmed.startsWith('base_branch:')) currentRepo.base_branch = extractYamlValue(trimmed, 'base_branch');
+      if (inCopyFiles && trimmed.startsWith('- ')) {
+        // Inside copy_files list: collect file paths (no colon, just "- value")
+        if (!currentRepo.copy_files) currentRepo.copy_files = [];
+        currentRepo.copy_files.push(trimmed.replace(/^-\s+/, ''));
+      } else if (trimmed.startsWith('copy_files:')) {
+        inCopyFiles = true;
+        currentRepo.copy_files = [];
+      } else if (trimmed.startsWith('remote:')) {
+        inCopyFiles = false;
+        currentRepo.remote = extractYamlValue(trimmed, 'remote');
+      } else if (trimmed.startsWith('base_branch:')) {
+        inCopyFiles = false;
+        currentRepo.base_branch = extractYamlValue(trimmed, 'base_branch');
+      }
     }
   }
   finalizeRepo();

@@ -95,12 +95,16 @@ repos:
       config += `  - path: ${repo.path}\n`;
       config += `    base_branch: ${repo.branch}\n`;
       config += `    remote: origin\n`;
+      config += `    # copy_files:\n`;
+      config += `    #   - .env\n`;
       config += `\n`;
     }
   } else {
     config += `  # - path: ./repos/<repo-name>\n`;
     config += `  #   base_branch: main\n`;
     config += `  #   remote: origin\n`;
+    config += `  #   copy_files:\n`;
+    config += `  #     - .env\n`;
     config += `\n`;
   }
 

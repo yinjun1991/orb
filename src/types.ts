@@ -6,8 +6,9 @@ export interface OrbConfig {
 
 export interface RepoConfig {
   path: string;
-  remote?: string;       // defaults to 'origin'
-  base_branch: string;   // required
+  remote?: string;          // defaults to 'origin'
+  base_branch: string;      // required
+  copy_files?: string[];    // files to copy from repo to worktree (e.g. .env)
 }
 
 export interface IssueEntry {

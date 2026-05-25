@@ -115,6 +115,15 @@ export function createIssue(projectRoot: string, issueId: string, title: string,
     // Create git worktree
     const worktreePath = path.join(worktreesDir, path.basename(repo.path));
     execSync(`git worktree add -b ${issueId} ${worktreePath} ${commit}`, { cwd: repoPath, stdio: 'inherit' });
+
+    // Copy untracked files (e.g. .env) from source repo to worktree
+    for (const file of repo.copy_files || []) {
+      const src = path.join(repoPath, file);
+      const dest = path.join(worktreePath, file);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, dest);
+      }
+    }
   }
 
   // Write base_version.json
