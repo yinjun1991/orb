@@ -83,7 +83,7 @@ skill 定义**稳定的角色**（原则、checklist、输出格式），prompt 
 ├─────────────────────────────────────────────────────────┤
 │  prompt（动态，orb 每次 invoke 构建）                      │
 │  - 当前 issue: f1                                        │
-│  - 读取 issues/f1/base_version.md，git diff <base>       │
+│  - 读取 issues/f1/base_version.json，git diff <base>       │
 │  - 读取 issues/f1/tech_design.md                         │
 │  - 对 pending_verification 的 bug 进行验证                │
 └─────────────────────────────────────────────────────────┘
@@ -94,7 +94,7 @@ skill 定义**稳定的角色**（原则、checklist、输出格式），prompt 
 **Claude Code** — 原生支持 `--skill` flag，skill 和 prompt 分开传入：
 
 ```sh
-claude -p "Review issue f1. Read issues/f1/base_version.md, run git diff..." \
+claude -p "Review issue f1. Read issues/f1/base_version.json, run git diff..." \
        --skill orb-code-reviewer \
        -w worktrees/f1/
 ```
@@ -294,7 +294,7 @@ orb 的角色不是理解代码，而是做三件事：
 
 ### 不把 git diff 放入 prompt，让 agent 自己 diff
 
-orb 不在 prompt 或 contextFiles 里注入 diff 内容。agent 在 worktree 里有完整的 git 环境，orb 只需传入 `base_version.md`，让 agent 自己执行 `git diff <base_commit>`。
+orb 不在 prompt 或 contextFiles 里注入 diff 内容。agent 在 worktree 里有完整的 git 环境，orb 只需传入 `base_version.json`，让 agent 自己执行 `git diff <base_commit>`。
 
 理由：
 - **diff 总是实时的** — developer 修完代码后 reviewer 再 diff，看到的就是最新状态
@@ -309,7 +309,7 @@ orb 不在 prompt 或 contextFiles 里注入 diff 内容。agent 在 worktree �
 输入（只读）:
   issues/f1/tech_design.md          ← 理解设计意图
   issues/f1/implemention_plan.md    ← 理解实现步骤
-  issues/f1/base_version.md         ← 获取 base commit，自行 git diff
+  issues/f1/base_version.json         ← 获取 base commit，自行 git diff
   issues/f1/bugs.md                 ← 了解历史 bug（避免重复报告）
   issues/f1/bugs/bug<n>.md          ← status=pending_verification 的 bug（需验证修复）
 
@@ -327,7 +327,7 @@ orb 不在 prompt 或 contextFiles 里注入 diff 内容。agent 在 worktree �
 ```
 输入（只读）:
   issues/f1/tech_design.md          ← 理解设计意图（修复前需参考）
-  issues/f1/base_version.md         ← 了解是从哪个 commit 切出的
+  issues/f1/base_version.json         ← 了解是从哪个 commit 切出的
   issues/f1/bugs.md                 ← 查找需要修复的 bug
   issues/f1/bugs/bug<n>.md          ← 所有 status=unresolved 的 bug 文件
 
@@ -366,7 +366,7 @@ interface BugFile {
 Round 1:
   ┌─ 1. REVIEWING ───────────────────────────────────────────────────┐
   │  orb 构建 prompt，核心指令：                                       │
-  │    "Read base_version.md to find the base commit.                 │
+  │    "Read base_version.json to find the base commit.                 │
   │     Run git diff <base_commit> to see all changes.                │
   │     Read tech_design.md to understand the design.                 │
   │     For each issue found, create issues/f1/bugs/bug<n>.md         │
@@ -377,7 +377,7 @@ Round 1:
   │    skill: "orb-code-reviewer",                                    │
   │    workdir: "worktrees/f1/",                                      │
   │    contextFiles: [                                                │
-  │      "issues/f1/base_version.md",                                 │
+  │      "issues/f1/base_version.json",                                 │
   │      "issues/f1/tech_design.md",                                  │
   │      "issues/f1/implemention_plan.md",                            │
   │      "issues/f1/bugs.md"                                          │
@@ -408,7 +408,7 @@ Round 1:
   │    skill: "orb-developer",                                        │
   │    workdir: "worktrees/f1/",                                      │
   │    contextFiles: [                                                │
-  │      "issues/f1/base_version.md",                                 │
+  │      "issues/f1/base_version.json",                                 │
   │      "issues/f1/tech_design.md",                                  │
   │      "issues/f1/bugs.md",                                         │
   │      "issues/f1/bugs/bug1.md",                                    │
@@ -449,7 +449,7 @@ Round 2:
 ### agent 如何产生 bug 文件与更新 bugs.md
 
 code-reviewer 被调用时，skill prompt 指导它：
-1. 通过 `base_version.md` 获取 base commit，运行 `git diff <base>` 查看变更
+1. 通过 `base_version.json` 获取 base commit，运行 `git diff <base>` 查看变更
 2. 在 `issues/f1/bugs/` 下创建 `bug<n>.md`（n 接续 bugs.md 中已有编号，status=unresolved）
 3. 对 `pending_verification` 的 bug：验证修复 → resolved（通过）或 unresolved（打回）
 4. 同步更新 `issues/f1/bugs.md`
@@ -487,7 +487,7 @@ function checkTermination(bugs: BugFile[], round: number, maxRounds: number): Te
 
 **developer 永远不能将 bug 标记为 resolved。** 只有 code-reviewer 可以确认修复。developer 只能标记 `pending_verification`（我修了，请检查）或 `blocked`（我修不了）。
 
-**不把 git diff 写进 prompt。** orb 传入 `base_version.md`（含各 repo 的 base commit SHA），agent 在 worktree 中自己 `git diff <base>`。diff 始终实时，不占 prompt 上下文。
+**不把 git diff 写进 prompt。** orb 传入 `base_version.json`（含各 repo 的 base commit SHA），agent 在 worktree 中自己 `git diff <base>`。diff 始终实时，不占 prompt 上下文。
 
 **不实时解析 agent 输出，靠文件系统检测。** agent 的输出是自然语言，不可靠。文件系统是 agent 和 orb 之间唯一的可靠契约。
 
@@ -504,12 +504,14 @@ orb 内置一套 markdown 模板文件（位于 `templates/` 目录），用于�
 | `templates/issue.md` | `issues/f<n>/issue.md` | `orb ic` | `{{TITLE}}` | 需求文档框架 |
 | `templates/tech_design.md` | `issues/f<n>/tech_design.md` | architect agent | `{{TITLE}}` | 技术方案框架 |
 | `templates/implemention_plan.md` | `issues/f<n>/implemention_plan.md` | architect agent | `{{TITLE}}` | 编码计划框架 |
-| `templates/base_version.md` | `issues/f<n>/base_version.md` | `orb ic` | `{{REPO_VERSIONS}}` | 各 repo 的 base commit 记录 |
 | `templates/bug.md` | `issues/f<n>/bugs/bug<n>.md` | code-reviewer agent | 无（纯结构模板） | 单个 bug 报告格式 |
+| `templates/bugs.md` | `issues/f<n>/bugs.md` | `orb ic` | 无（纯结构模板） | bug 索引表 |
+
+`base_version.json` 不需要模板——由代码直接 `JSON.stringify` 生成。
 
 ### 模板使用方式
 
-**orb 命令使用模板：** `orb ic` 读取 `templates/issue.md` 和 `templates/base_version.md`，替换占位符后写入 issue 目录。模板文件随 orb npm 包一起分发，构建时 `tsc && cp -r templates dist/` 复制到 dist。运行时从 `dist/templates/` 读取（开发模式回退到 `templates/`）。
+**orb 命令使用模板：** `orb ic` 读取 `templates/issue.md` 替换 `{{TITLE}}` 占位符后写入。`base_version.json` 由代码直接生成 JSON，不走模板替换。模板文件随 orb npm 包一起分发，构建时 `tsc && cp -r templates dist/` 复制到 dist。运行时从 `dist/templates/` 读取（开发模式回退到 `templates/`）。
 
 **AI agent 使用模板：** architect agent 和 code-reviewer agent 的 skill prompt 中引用模板路径，指导 agent 按照模板结构填写内容。agent 不直接读模板文件，而是从 skill prompt 中学习输出格式。
 

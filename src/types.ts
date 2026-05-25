@@ -19,5 +19,5 @@ export interface IssueEntry {
 export type IssueStatus = 'defining' | 'designing' | 'implementing' | 'reviewing' | 'done';
 
 export interface BaseVersion {
-  [repoPath: string]: string; // repo path -> commit SHA
+  [repoName: string]: string; // repo name -> base commit SHA
 }

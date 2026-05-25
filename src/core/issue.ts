@@ -9,10 +9,13 @@ const WORKTREES_DIR = 'worktrees';
 const ISSUES_INDEX = 'issues.md';
 const BUGS_INDEX = 'bugs.md';
 const ISSUE_FILE = 'issue.md';
-const BASE_VERSION_FILE = 'base_version.md';
+const TECH_DESIGN_FILE = 'tech_design.md';
+const IMPLEMENTION_PLAN_FILE = 'implemention_plan.md';
+const BASE_VERSION_FILE = 'base_version.json';
 
 const TEMPLATE_ISSUE = 'issue.md';
-const TEMPLATE_BASE_VERSION = 'base_version.md';
+const TEMPLATE_TECH_DESIGN = 'tech_design.md';
+const TEMPLATE_IMPLEMENTION_PLAN = 'implemention_plan.md';
 
 /** Resolve the orb package root (for reading templates). */
 function getOrbRoot(): string {
@@ -50,22 +53,17 @@ export function getNextIssueId(projectRoot: string): string {
 }
 
 /**
- * Generate the issue.md content from a title, using the template.
+ * Read a template and replace {{TITLE}} with the given title.
  */
-export function generateIssueMd(title: string): string {
-  const template = readTemplate(TEMPLATE_ISSUE);
-  return template.replace('{{TITLE}}', title);
+function renderTemplate(templateName: string, title: string): string {
+  return readTemplate(templateName).replace('{{TITLE}}', title);
 }
 
 /**
- * Generate bugs.md index content.
+ * Read bugs.md from template.
  */
 export function generateBugsIndex(): string {
-  return `# Bugs
-
-| # | Title | Severity | Status | Round |
-|---|-------|----------|--------|-------|
-`;
+  return readTemplate(BUGS_INDEX);
 }
 
 /**
@@ -77,14 +75,11 @@ export function getRepoHeadCommit(repoPath: string, baseBranch: string): string 
 }
 
 /**
- * Generate base_version.md content from the template.
+ * Generate base_version.json content.
+ * Key: repo name (basename of repo path), Value: base commit SHA.
  */
 export function generateBaseVersion(baseVersions: BaseVersion): string {
-  const template = readTemplate(TEMPLATE_BASE_VERSION);
-  const lines = Object.entries(baseVersions).map(
-    ([repo, commit]) => `- **${repo}**: \`${commit}\``,
-  );
-  return template.replace('{{REPO_VERSIONS}}', lines.join('\n'));
+  return JSON.stringify(baseVersions, null, 2) + '\n';
 }
 
 /**
@@ -99,8 +94,10 @@ export function createIssue(projectRoot: string, issueId: string, title: string,
   fs.ensureDirSync(issueDir);
   fs.ensureDirSync(bugsDir);
 
-  // Write issue.md from template
-  fs.writeFileSync(path.join(issueDir, ISSUE_FILE), generateIssueMd(title));
+  // Write standard files from templates
+  fs.writeFileSync(path.join(issueDir, ISSUE_FILE), renderTemplate(TEMPLATE_ISSUE, title));
+  fs.writeFileSync(path.join(issueDir, TECH_DESIGN_FILE), renderTemplate(TEMPLATE_TECH_DESIGN, title));
+  fs.writeFileSync(path.join(issueDir, IMPLEMENTION_PLAN_FILE), renderTemplate(TEMPLATE_IMPLEMENTION_PLAN, title));
 
   // Write bugs.md index
   fs.writeFileSync(path.join(issueDir, BUGS_INDEX), generateBugsIndex());
@@ -113,14 +110,14 @@ export function createIssue(projectRoot: string, issueId: string, title: string,
   for (const repo of repos) {
     const repoPath = path.resolve(projectRoot, repo.path);
     const commit = getRepoHeadCommit(repoPath, repo.base_branch);
-    baseVersions[repo.path] = commit;
+    baseVersions[path.basename(repo.path)] = commit;
 
     // Create git worktree
     const worktreePath = path.join(worktreesDir, path.basename(repo.path));
     execSync(`git worktree add -b ${issueId} ${worktreePath} ${commit}`, { cwd: repoPath, stdio: 'inherit' });
   }
 
-  // Write base_version.md from template
+  // Write base_version.json
   fs.writeFileSync(path.join(issueDir, BASE_VERSION_FILE), generateBaseVersion(baseVersions));
 
   // Append to issues.md index

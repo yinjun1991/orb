@@ -75,7 +75,7 @@ code-reviewer agent review 代码变更，发现 bug/问题后提交到 `bugs/` 
 
 流程：
 1. 在 issues.md 追加 issue 条目，分配编号（如 f1、f2）
-2. 在 issues/ 下创建 `f<n>/` 文件夹，填充 `issue.md`（含 title、背景、目标、非目标、约束）和 `base_version.md`
+2. 在 issues/ 下创建 `f<n>/` 文件夹，填充 `issue.md`（含 title、背景、目标、非目标、约束）和 `base_version.json`
 3. 在 worktrees/ 下创建 `f<n>/`，将所有 repos 以 worktree 形式 checkout 到该目录，分支名即为 issue 编号
 4. 创建 issues/f<n>/bugs/ 目录
 
@@ -209,7 +209,7 @@ orb install-skills
 │   │   ├── issue.md                # issue 描述（title、背景、目标、非目标、约束）
 │   │   ├── tech_design.md          # 技术方案
 │   │   ├── implemention_plan.md    # 编码计划
-│   │   ├── base_version.md         # 该 issue 基于各 repos 的哪个 commit 切出
+│   │   ├── base_version.json         # 该 issue 基于各 repos 的哪个 commit 切出
 │   │   ├── bugs.md                 # bug 列表（编号、title、状态）
 │   │   └── bugs/                   # 所有 bug 的详细文档
 │   │       ├── bug1.md         # 包含 title、描述、严重程度、关联文件:行号

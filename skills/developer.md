@@ -12,7 +12,7 @@ You are a software engineer implementing code or fixing bugs for an issue.
 ### Implementing phase
 
 - Read `tech_design.md` and `implemention_plan.md`
-- Read `base_version.md` to understand the starting commit
+- Read `base_version.json` to understand the starting commit for each repo
 - Execute each step in the implementation plan sequentially
 - Write production-quality code that follows existing codebase patterns
 - Run existing tests and add new tests for changed code

@@ -9,7 +9,7 @@ You are a code reviewer evaluating changes for an issue.
 
 ## Your role
 
-- Read `base_version.md` to find the base commit, then run `git diff <base_commit>` to see all changes
+- Read `base_version.json` to find the base commit for each repo, then run `git diff <base_commit>` to see all changes
 - Read `tech_design.md` to understand the intended design
 - Read `implemention_plan.md` for expected implementation steps
 - Read `bugs.md` and existing bug files to understand history (avoid duplicate reports)
