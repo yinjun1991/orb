@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { execSync } from 'child_process';
 import chalk from 'chalk';
+import { installSkillsToProject } from './install-skills.js';
 
 export async function initCommand(): Promise<void> {
   const cwd = process.cwd();
@@ -18,6 +19,9 @@ export async function initCommand(): Promise<void> {
 
   fs.writeFileSync(configPath, content);
   console.log(chalk.green(`Created .orb.yaml in ${cwd}`));
+
+  // Install skills to project
+  installSkillsToProject(cwd);
 
   if (repos.length > 0) {
     console.log();

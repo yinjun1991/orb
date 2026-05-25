@@ -3,10 +3,11 @@ import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
+import { findProjectRoot } from '../core/config.js';
 
 interface SkillInfo {
-  name: string;       // from frontmatter, e.g. "orb-developer"
-  sourcePath: string; // source file path
+  name: string;
+  sourcePath: string;
 }
 
 const SKILL_FILES = [
@@ -16,38 +17,21 @@ const SKILL_FILES = [
   'code-reviewer.md',
 ];
 
+/**
+ * CLI command: install skills to global (~) and project root (if in a project).
+ */
 export async function installSkillsCommand(): Promise<void> {
-  const orbRoot = getOrbRoot();
-  const skillsDir = path.join(orbRoot, 'skills');
-  const home = os.homedir();
+  const skills = loadAllSkills();
 
-  if (!fs.existsSync(skillsDir)) {
-    console.error(chalk.red('Error: skills directory not found in orb package.'));
-    process.exit(1);
-  }
+  // Global install
+  installSkillsForCC(skills, os.homedir());
+  installSkillsForCodex(skills, os.homedir());
 
-  // Load all skills
-  const skills = loadSkills(skillsDir);
-
-  // Install for Claude Code
-  const ccDir = path.join(home, '.claude', 'skills');
-  fs.ensureDirSync(ccDir);
-  let ccCount = 0;
-  for (const skill of skills) {
-    const dest = path.join(ccDir, `${skill.name}.md`);
-    fs.copyFileSync(skill.sourcePath, dest);
-    ccCount++;
-  }
-
-  // Install for Codex (Agent Skills standard)
-  const codexDir = path.join(home, '.agents', 'skills');
-  fs.ensureDirSync(codexDir);
-  let codexCount = 0;
-  for (const skill of skills) {
-    const destDir = path.join(codexDir, skill.name);
-    fs.ensureDirSync(destDir);
-    fs.copyFileSync(skill.sourcePath, path.join(destDir, 'SKILL.md'));
-    codexCount++;
+  // Project install (if inside a project)
+  const projectRoot = findProjectRoot();
+  if (projectRoot) {
+    installSkillsForCC(skills, projectRoot);
+    installSkillsForCodex(skills, projectRoot);
   }
 
   console.log(chalk.green(`Installed ${skills.length} skill(s):`));
@@ -56,8 +40,48 @@ export async function installSkillsCommand(): Promise<void> {
     console.log(`  ${chalk.cyan(`/${skill.name}`)}`);
   }
   console.log();
-  console.log(`  ${chalk.gray('Claude Code:')} ~/.claude/skills/  (${ccCount} files)`);
-  console.log(`  ${chalk.gray('Codex:')}       ~/.agents/skills/  (${codexCount} dirs)`);
+  console.log(`  ${chalk.gray('Claude Code:')} ~/.claude/skills/  (global)`);
+  console.log(`  ${chalk.gray('Codex:')}       ~/.agents/skills/  (global)`);
+  if (projectRoot) {
+    console.log(`  ${chalk.gray('Project:')}     .claude/skills/ .agents/skills/`);
+  }
+}
+
+/**
+ * Install skills to the project root. Called by `orbc init`.
+ */
+export function installSkillsToProject(projectRoot: string): void {
+  const skills = loadAllSkills();
+  installSkillsForCC(skills, projectRoot);
+  installSkillsForCodex(skills, projectRoot);
+}
+
+function installSkillsForCC(skills: SkillInfo[], targetRoot: string): void {
+  const ccDir = path.join(targetRoot, '.claude', 'skills');
+  fs.ensureDirSync(ccDir);
+  for (const skill of skills) {
+    fs.copyFileSync(skill.sourcePath, path.join(ccDir, `${skill.name}.md`));
+  }
+}
+
+function installSkillsForCodex(skills: SkillInfo[], targetRoot: string): void {
+  const codexDir = path.join(targetRoot, '.agents', 'skills');
+  fs.ensureDirSync(codexDir);
+  for (const skill of skills) {
+    const destDir = path.join(codexDir, skill.name);
+    fs.ensureDirSync(destDir);
+    fs.copyFileSync(skill.sourcePath, path.join(destDir, 'SKILL.md'));
+  }
+}
+
+function loadAllSkills(): SkillInfo[] {
+  const orbRoot = getOrbRoot();
+  const skillsDir = path.join(orbRoot, 'skills');
+  if (!fs.existsSync(skillsDir)) {
+    console.error(chalk.red('Error: skills directory not found in orb package.'));
+    process.exit(1);
+  }
+  return loadSkills(skillsDir);
 }
 
 function loadSkills(skillsDir: string): SkillInfo[] {
@@ -84,7 +108,6 @@ function extractSkillName(filePath: string): string {
   return match[1];
 }
 
-/** Resolve the orb package root (for finding skills/ directory). */
 function getOrbRoot(): string {
   const __filename = fileURLToPath(import.meta.url);
   return path.resolve(path.dirname(__filename), '..', '..');
