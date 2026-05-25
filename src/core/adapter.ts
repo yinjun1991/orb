@@ -25,7 +25,8 @@ function runClaudeCode(opts: RunOptions): Promise<void> {
   return new Promise((resolve, reject) => {
     const prompt = buildPrompt(opts);
 
-    const child = spawn('claude', ['-p', prompt], {
+    // Interactive mode (no -p) — user can intervene when agent asks questions
+    const child = spawn('claude', [prompt], {
       stdio: 'inherit',
       cwd: opts.workdir,
     });
@@ -43,16 +44,14 @@ function runClaudeCode(opts: RunOptions): Promise<void> {
 
 function runCodex(opts: RunOptions): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Codex discovers skills from .agents/skills/. Reference by name with $ prefix.
+    // Interactive mode — Codex discovers skills from .agents/skills/
     const prompt = [
       `Use the $${opts.skill} skill.`,
       '',
       buildPrompt(opts),
     ].join('\n');
 
-    const args = ['exec', prompt, '--cwd', opts.workdir];
-
-    const child = spawn('codex', args, {
+    const child = spawn('codex', [prompt], {
       stdio: 'inherit',
       cwd: opts.workdir,
     });
