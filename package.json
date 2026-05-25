@@ -5,7 +5,7 @@
   "type": "module",
   "description": "CLI tool for orchestrating AI agents across the full development pipeline",
   "bin": {
-    "orb": "./dist/index.js"
+    "orbc": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc && cp -r templates dist/",

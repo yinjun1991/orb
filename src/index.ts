@@ -14,7 +14,7 @@ const pkg = fs.readJSONSync(path.join(__dirname, '..', 'package.json'));
 const program = new Command();
 
 program
-  .name('orb')
+  .name('orbc')
   .description('CLI tool for orchestrating AI agents across the full development pipeline')
   .version(pkg.version);
 
