@@ -6,6 +6,7 @@ import { syncCommand } from './commands/sync.js';
 import { initCommand } from './commands/init.js';
 import { statusCommand } from './commands/status.js';
 import { codeCommand } from './commands/code.js';
+import { reviewCommand } from './commands/review.js';
 import { installSkillsCommand } from './commands/install-skills.js';
 import fs from 'fs-extra';
 import path from 'path';
@@ -65,6 +66,14 @@ program
   .argument('<issueId>', 'issue ID (e.g. f1)')
   .action(async (issueId: string) => {
     await codeCommand(issueId);
+  });
+
+program
+  .command('review')
+  .description('Run the review→fix loop on an issue')
+  .argument('<issueId>', 'issue ID (e.g. f1)')
+  .action(async (issueId: string) => {
+    await reviewCommand(issueId);
   });
 
 program.parse();

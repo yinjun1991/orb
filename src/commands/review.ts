@@ -1,0 +1,240 @@
+import { findProjectRoot, parseOrbConfig } from '../core/config.js';
+import { runAgent, AgentType } from '../core/adapter.js';
+import fs from 'fs-extra';
+import path from 'path';
+import chalk from 'chalk';
+import ora from 'ora';
+
+interface BugEntry {
+  number: number;
+  title: string;
+  status: string;
+  round: number;
+}
+
+export async function reviewCommand(issueId: string): Promise<void> {
+  const projectRoot = findProjectRoot();
+  if (!projectRoot) {
+    console.error(chalk.red('Error: Not in an orb project.'));
+    process.exit(1);
+  }
+
+  const configPath = path.join(projectRoot, '.orb.yaml');
+  if (!fs.existsSync(configPath)) {
+    console.error(chalk.red('Error: .orb.yaml not found.'));
+    process.exit(1);
+  }
+  const config = parseOrbConfig(fs.readFileSync(configPath, 'utf-8'));
+
+  const issueDir = path.join(projectRoot, 'issues', issueId);
+  if (!fs.existsSync(issueDir)) {
+    console.error(chalk.red(`Error: Issue ${issueId} not found.`));
+    process.exit(1);
+  }
+
+  const repoName = path.basename(config.repos[0].path);
+  const worktreePath = path.join(projectRoot, 'worktrees', issueId, repoName);
+  const agent: AgentType = config.review_agent ?? config.agent;
+  const maxRounds = config.max_review_rounds ?? 3;
+
+  updateIssueStatus(projectRoot, issueId, 'reviewing');
+
+  console.log(chalk.bold(`Reviewing ${issueId}`));
+  console.log();
+  console.log(`  ${chalk.gray('Agent:')}    ${agent}`);
+  console.log(`  ${chalk.gray('Max rounds:')} ${maxRounds}`);
+  console.log();
+
+  let round = 0;
+
+  while (round < maxRounds) {
+    round++;
+
+    // ── REVIEW phase ──
+    console.log(chalk.bold(`Round ${round}/${maxRounds} — Review`));
+    const reviewSpinner = ora('Running code-reviewer agent...').start();
+
+    try {
+      await runAgent(agent, {
+        skill: 'orb-code-reviewer',
+        workdir: worktreePath,
+        prompt: buildReviewPrompt(issueId),
+        contextFiles: [
+          `issues/${issueId}/tech_design.md`,
+          `issues/${issueId}/code_plan.md`,
+          `issues/${issueId}/base_version.json`,
+          `issues/${issueId}/bugs.md`,
+        ],
+      });
+    } catch (err: any) {
+      reviewSpinner.fail(`Review failed: ${err.message}`);
+      process.exit(1);
+    }
+
+    // Scan bugs after review
+    const bugsAfterReview = scanBugs(issueDir, round);
+
+    const unresolved = bugsAfterReview.filter(b => b.status === 'unresolved');
+    const blocked = bugsAfterReview.filter(b => b.status === 'blocked');
+    const pending = bugsAfterReview.filter(b => b.status === 'pending_verification');
+    const resolved = bugsAfterReview.filter(b => b.status === 'resolved');
+    const active = [...unresolved, ...pending, ...blocked];
+
+    if (active.length === 0) {
+      reviewSpinner.succeed('Review passed — no bugs found');
+      console.log();
+      console.log(`  ${chalk.green(`✔`)} ${resolved.length} resolved, 0 remaining`);
+      console.log();
+      console.log(`  Next: ${chalk.cyan(`orbc done ${issueId}`)}`);
+      return;
+    }
+
+    reviewSpinner.succeed(
+      `${bugsAfterReview.length} bug(s): ${chalk.red(unresolved.length)} unresolved, ${chalk.yellow(pending.length)} pending, ${chalk.green(resolved.length)} resolved, ${chalk.gray(blocked.length)} blocked`,
+    );
+
+    // If only blocked + resolved → human needed
+    if (unresolved.length === 0 && pending.length === 0 && blocked.length > 0) {
+      console.log();
+      console.log(chalk.yellow(`All remaining bugs are blocked — human intervention needed.`));
+      for (const b of blocked) {
+        console.log(`  ${chalk.gray('⊘')} #${b.number} ${b.title} (blocked)`);
+      }
+      console.log();
+      return;
+    }
+
+    // If no unresolved → review passed
+    if (unresolved.length === 0) {
+      console.log();
+      console.log(`  All bugs resolved or pending verification.`);
+      continue; // back to review for verification
+    }
+
+    // ── FIX phase ──
+    console.log();
+    console.log(chalk.bold(`Round ${round}/${maxRounds} — Fix`));
+    const fixSpinner = ora(`Fixing ${unresolved.length} unresolved bug(s)...`).start();
+
+    const bugFiles = unresolved.map(b => `issues/${issueId}/bugs/bug${b.number}.md`);
+
+    try {
+      await runAgent(agent, {
+        skill: 'orb-developer',
+        workdir: worktreePath,
+        prompt: buildFixPrompt(issueId, unresolved),
+        contextFiles: [
+          `issues/${issueId}/tech_design.md`,
+          `issues/${issueId}/bugs.md`,
+          ...bugFiles,
+        ],
+      });
+    } catch (err: any) {
+      fixSpinner.fail(`Fix failed: ${err.message}`);
+      process.exit(1);
+    }
+
+    // Scan bugs after fix
+    const bugsAfterFix = scanBugs(issueDir, round);
+    const stillUnresolved = bugsAfterFix.filter(b => b.status === 'unresolved');
+
+    if (stillUnresolved.length === 0) {
+      fixSpinner.succeed('All bugs addressed');
+    } else {
+      fixSpinner.warn(`${stillUnresolved.length} bug(s) still unresolved`);
+    }
+    console.log();
+  }
+
+  // Max rounds reached
+  const finalBugs = scanBugs(issueDir, round);
+  const remaining = finalBugs.filter(b => b.status !== 'resolved');
+  console.log(chalk.yellow(`Max rounds (${maxRounds}) reached. ${remaining.length} bug(s) remain.`));
+  console.log();
+  console.log(`  Review the remaining bugs and run ${chalk.cyan(`orbc review ${issueId}`)} again.`);
+}
+
+function scanBugs(issueDir: string, round: number): BugEntry[] {
+  const bugsDir = path.join(issueDir, 'bugs');
+  if (!fs.existsSync(bugsDir)) return [];
+
+  const bugs: BugEntry[] = [];
+  for (const file of fs.readdirSync(bugsDir)) {
+    const match = file.match(/^bug(\d+)\.md$/);
+    if (!match) continue;
+
+    const content = fs.readFileSync(path.join(bugsDir, file), 'utf-8');
+    const statusMatch = content.match(/\*\*Status\*\*:\s*(\S+)/);
+    const titleMatch = content.match(/^# Bug \d+: (.+)$/m);
+    if (statusMatch) {
+      bugs.push({
+        number: parseInt(match[1], 10),
+        title: titleMatch?.[1] || 'unknown',
+        status: statusMatch[1],
+        round,
+      });
+    }
+  }
+  return bugs;
+}
+
+function buildReviewPrompt(issueId: string): string {
+  return [
+    `Review issue ${issueId}.`,
+    '',
+    'Before reviewing:',
+    `1. Read issues/${issueId}/base_version.json to find the base commit`,
+    `2. Run git diff <base_commit> to see all changes`,
+    `3. Read issues/${issueId}/tech_design.md to understand the design`,
+    `4. Read issues/${issueId}/bugs.md for existing bug history`,
+    '',
+    'For each pending_verification bug: verify the fix.',
+    '  - If fixed correctly → change Status to resolved',
+    '  - If still broken → change Status back to unresolved (explain why)',
+    '',
+    'For new issues found: create a new bug<n>.md in issues/' + issueId + '/bugs/',
+    'with Status=unresolved. Use the next available bug number.',
+    '',
+    'After all checks, update issues/' + issueId + '/bugs.md to reflect all changes.',
+    '',
+    'If no new bugs and all pending_verification bugs are now resolved:',
+    'output NO_BUGS_FOUND',
+  ].join('\n');
+}
+
+function buildFixPrompt(issueId: string, bugs: BugEntry[]): string {
+  const bugList = bugs.map(b => `  - bug${b.number}.md: ${b.title}`).join('\n');
+
+  return [
+    `Fix unresolved bugs for issue ${issueId}.`,
+    '',
+    'Bugs to fix:',
+    bugList,
+    '',
+    'For each bug:',
+    `1. Read issues/${issueId}/bugs/bug<n>.md for details`,
+    `2. Fix the code in the worktree`,
+    `3. Change the bug file Status to pending_verification`,
+    '',
+    'If a bug cannot be fixed (needs design change):',
+    '  - Change Status to blocked and explain why',
+    '',
+    'After all fixes, update issues/' + issueId + '/bugs.md.',
+    'Run tests to check for regressions.',
+  ].join('\n');
+}
+
+function updateIssueStatus(projectRoot: string, issueId: string, newStatus: string): void {
+  const indexPath = path.join(projectRoot, 'issues', 'issues.md');
+  if (!fs.existsSync(indexPath)) return;
+
+  const content = fs.readFileSync(indexPath, 'utf-8');
+  const lines = content.split('\n');
+  const updated = lines.map(line => {
+    const match = line.match(new RegExp(`^\\|\\s*${issueId}\\s*\\|`));
+    if (!match) return line;
+    return line.replace(/\|\s*\S+\s*\|$/, `| ${newStatus} |`);
+  });
+
+  fs.writeFileSync(indexPath, updated.join('\n'));
+}
