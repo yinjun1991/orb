@@ -10,6 +10,7 @@ import { reviewCommand } from './commands/review.js';
 import { blockCommand } from './commands/block.js';
 import { cleanCommand } from './commands/clean.js';
 import { prCommand } from './commands/pr.js';
+import { dropCommand } from './commands/drop.js';
 import { installSkillsCommand } from './commands/install-skills.js';
 import fs from 'fs-extra';
 import path from 'path';
@@ -111,5 +112,14 @@ program
     await cleanCommand(issueId);
   })
   .addHelpText('after', '\nExample:\n  orbc clean f1');
+
+program
+  .command('drop')
+  .description('Permanently delete an issue and its worktree')
+  .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
+  .action(async (issueId: string) => {
+    await dropCommand(issueId);
+  })
+  .addHelpText('after', '\nExample:\n  orbc drop f1\n  This cannot be undone. You will be asked to confirm by retyping the issue ID.');
 
 program.parse();
