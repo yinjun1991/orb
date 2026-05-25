@@ -63,11 +63,9 @@ export async function codeCommand(issueId: string): Promise<void> {
       ],
     });
 
-    updateIssueStatus(projectRoot, issueId, 'reviewing');
-
     spinner.succeed('Coding complete');
     console.log();
-    console.log(`  ${chalk.gray('Status:')} reviewing`);
+    console.log(`  ${chalk.gray('Status:')} coding`);
     console.log(`  Next: ${chalk.cyan(`orbc review ${issueId}`)}`);
   } catch (err: any) {
     spinner.fail(`Coding failed: ${err.message}`);

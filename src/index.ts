@@ -31,8 +31,9 @@ program
 program
   .command('install-skills')
   .description('Install orb skills for Claude Code and Codex')
-  .action(async () => {
-    await installSkillsCommand();
+  .option('--global', 'Install globally to ~/, instead of project root')
+  .action(async (opts) => {
+    await installSkillsCommand({ global: opts.global });
   });
 
 program

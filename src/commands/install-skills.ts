@@ -18,33 +18,42 @@ const SKILL_FILES = [
 ];
 
 /**
- * CLI command: install skills to global (~) and project root (if in a project).
+ * CLI command: install skills to project root (default) or global (~) with --global.
  */
-export async function installSkillsCommand(): Promise<void> {
+export async function installSkillsCommand(opts: { global?: boolean }): Promise<void> {
   const skills = loadAllSkills();
 
-  // Global install
-  installSkillsForCC(skills, os.homedir());
-  installSkillsForCodex(skills, os.homedir());
-
-  // Project install (if inside a project)
-  const projectRoot = findProjectRoot();
-  if (projectRoot) {
-    installSkillsForCC(skills, projectRoot);
-    installSkillsForCodex(skills, projectRoot);
+  if (opts.global) {
+    installSkillsForCC(skills, os.homedir());
+    installSkillsForCodex(skills, os.homedir());
+    console.log(chalk.green(`Installed ${skills.length} skill(s) globally:`));
+    console.log();
+    for (const skill of skills) {
+      console.log(`  ${chalk.cyan(`/${skill.name}`)}`);
+    }
+    console.log();
+    console.log(`  ${chalk.gray('Claude Code:')} ~/.claude/skills/`);
+    console.log(`  ${chalk.gray('Codex:')}       ~/.agents/skills/`);
+    return;
   }
 
-  console.log(chalk.green(`Installed ${skills.length} skill(s):`));
+  const projectRoot = findProjectRoot();
+  if (!projectRoot) {
+    console.error(chalk.red('Error: Not in an orb project. Use --global to install globally.'));
+    process.exit(1);
+  }
+
+  installSkillsForCC(skills, projectRoot);
+  installSkillsForCodex(skills, projectRoot);
+
+  console.log(chalk.green(`Installed ${skills.length} skill(s) to project:`));
   console.log();
   for (const skill of skills) {
     console.log(`  ${chalk.cyan(`/${skill.name}`)}`);
   }
   console.log();
-  console.log(`  ${chalk.gray('Claude Code:')} ~/.claude/skills/  (global)`);
-  console.log(`  ${chalk.gray('Codex:')}       ~/.agents/skills/  (global)`);
-  if (projectRoot) {
-    console.log(`  ${chalk.gray('Project:')}     .claude/skills/ .agents/skills/`);
-  }
+  console.log(`  ${chalk.gray('Claude Code:')} .claude/skills/`);
+  console.log(`  ${chalk.gray('Codex:')}       .agents/skills/`);
 }
 
 /**

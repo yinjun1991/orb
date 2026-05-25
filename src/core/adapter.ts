@@ -11,7 +11,8 @@ export interface RunOptions {
 
 /**
  * Run an AI agent with the given skill and prompt.
- * Passes file paths in the prompt — never inlines file contents.
+ * Skills are loaded from the filesystem (.claude/skills/ or .agents/skills/),
+ * installed by `orbc init`. The adapter only passes the prompt — no inline skill content.
  */
 export function runAgent(agent: AgentType, opts: RunOptions): Promise<void> {
   if (agent === 'codex') {
@@ -22,16 +23,9 @@ export function runAgent(agent: AgentType, opts: RunOptions): Promise<void> {
 
 function runClaudeCode(opts: RunOptions): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Build prompt: task description + context file references
     const prompt = buildPrompt(opts);
 
-    const args = [
-      '-p', prompt,
-      '--skill', opts.skill,
-      '-w', opts.workdir,
-    ];
-
-    const child = spawn('claude', args, {
+    const child = spawn('claude', ['-p', prompt], {
       stdio: 'inherit',
       cwd: opts.workdir,
     });
@@ -49,9 +43,9 @@ function runClaudeCode(opts: RunOptions): Promise<void> {
 
 function runCodex(opts: RunOptions): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Codex doesn't support --skill, inline the skill reference instead
+    // Codex discovers skills from .agents/skills/. Reference by name with $ prefix.
     const prompt = [
-      `Use the skill: ${opts.skill}`,
+      `Use the $${opts.skill} skill.`,
       '',
       buildPrompt(opts),
     ].join('\n');
@@ -78,7 +72,11 @@ function runCodex(opts: RunOptions): Promise<void> {
  * Build the prompt that references file paths without inlining content.
  */
 function buildPrompt(opts: RunOptions): string {
-  const lines: string[] = [opts.prompt];
+  const lines: string[] = [
+    `Use the ${opts.skill} skill for this task.`,
+    '',
+    opts.prompt,
+  ];
 
   if (opts.contextFiles.length > 0) {
     lines.push('');
