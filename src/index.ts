@@ -5,6 +5,8 @@ import { icCommand } from './commands/ic.js';
 import { syncCommand } from './commands/sync.js';
 import { initCommand } from './commands/init.js';
 import { statusCommand } from './commands/status.js';
+import { codeCommand } from './commands/code.js';
+import { installSkillsCommand } from './commands/install-skills.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -24,6 +26,13 @@ program
   .description('Initialize an orb project by creating .orb.yaml')
   .action(async () => {
     await initCommand();
+  });
+
+program
+  .command('install-skills')
+  .description('Install orb skills for Claude Code and Codex')
+  .action(async () => {
+    await installSkillsCommand();
   });
 
 program
@@ -47,6 +56,14 @@ program
   .argument('[issueId]', 'issue ID (e.g. f1), omit to list all issues')
   .action(async (issueId?: string) => {
     await statusCommand(issueId);
+  });
+
+program
+  .command('code')
+  .description('Run the developer agent to code an issue')
+  .argument('<issueId>', 'issue ID (e.g. f1)')
+  .action(async (issueId: string) => {
+    await codeCommand(issueId);
   });
 
 program.parse();

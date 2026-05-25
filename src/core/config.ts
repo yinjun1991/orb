@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { OrbConfig } from '../types.js';
+import YAML from 'yaml';
+import { OrbConfig, RepoConfig } from '../types.js';
 
 /**
  * Find the project root by looking for .orb.yaml or AGENTS.md upward.
@@ -22,70 +23,75 @@ export function findProjectRoot(cwd: string = process.cwd()): string | null {
  * Validates required fields per repo: path and base_branch are required, remote defaults to 'origin'.
  */
 export function parseOrbConfig(content: string): OrbConfig {
-  const config: OrbConfig = { agent: 'cc', repos: [] };
-  const lines = content.split('\n');
-  let currentRepo: Record<string, any> | null = null;
-  let inCopyFiles = false;
-  let repoIndex = 0;
-
-  function finalizeRepo() {
-    if (!currentRepo) return;
-    repoIndex++;
-
-    if (!currentRepo.path) {
-      console.error(`Error: repo #${repoIndex} in .orb.yaml is missing "path".`);
-      process.exit(1);
-    }
-    if (!currentRepo.base_branch) {
-      console.error(`Error: repo "${currentRepo.path}" in .orb.yaml is missing "base_branch".`);
-      process.exit(1);
-    }
-    if (!currentRepo.remote) {
-      currentRepo.remote = 'origin';
-    }
-
-    config.repos.push(currentRepo as any);
-    currentRepo = null;
+  let raw: any;
+  try {
+    raw = YAML.parse(content);
+  } catch (err: any) {
+    console.error(`Error: Invalid .orb.yaml: ${err.message}`);
+    process.exit(1);
   }
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-
-    if (trimmed.startsWith('agent:')) {
-      const val = trimmed.split(':')[1]?.trim().replace(/"/g, '');
-      if (val === 'cc' || val === 'codex') config.agent = val;
-    } else if (trimmed.startsWith('max_review_rounds:')) {
-      config.max_review_rounds = parseInt(trimmed.split(':')[1]?.trim() || '3', 10);
-    } else if (trimmed === 'repos:') {
-      // beginning of repos list
-    } else if (trimmed.startsWith('- path:')) {
-      finalizeRepo();
-      inCopyFiles = false;
-      currentRepo = { path: extractYamlValue(trimmed, 'path') };
-    } else if (currentRepo) {
-      if (inCopyFiles && trimmed.startsWith('- ')) {
-        // Inside copy_files list: collect file paths (no colon, just "- value")
-        if (!currentRepo.copy_files) currentRepo.copy_files = [];
-        currentRepo.copy_files.push(trimmed.replace(/^-\s+/, ''));
-      } else if (trimmed.startsWith('copy_files:')) {
-        inCopyFiles = true;
-        currentRepo.copy_files = [];
-      } else if (trimmed.startsWith('remote:')) {
-        inCopyFiles = false;
-        currentRepo.remote = extractYamlValue(trimmed, 'remote');
-      } else if (trimmed.startsWith('base_branch:')) {
-        inCopyFiles = false;
-        currentRepo.base_branch = extractYamlValue(trimmed, 'base_branch');
-      }
-    }
+  if (!raw || typeof raw !== 'object') {
+    console.error('Error: .orb.yaml is empty or invalid.');
+    process.exit(1);
   }
-  finalizeRepo();
+
+  const config: OrbConfig = {
+    agent: validateAgent(raw.agent, 'agent') || 'cc',
+    repos: [],
+  };
+
+  if (raw.coding_agent !== undefined) {
+    config.coding_agent = validateAgent(raw.coding_agent, 'coding_agent');
+  }
+  if (raw.review_agent !== undefined) {
+    config.review_agent = validateAgent(raw.review_agent, 'review_agent');
+  }
+  if (raw.max_review_rounds !== undefined) {
+    config.max_review_rounds = raw.max_review_rounds;
+  }
+
+  if (!Array.isArray(raw.repos) || raw.repos.length === 0) {
+    console.error('Error: .orb.yaml must have a "repos" list with at least one repo.');
+    process.exit(1);
+  }
+
+  for (let i = 0; i < raw.repos.length; i++) {
+    config.repos.push(validateRepo(raw.repos[i], i + 1));
+  }
 
   return config;
 }
 
-function extractYamlValue(line: string, key: string): string {
-  const val = line.split(':').slice(1).join(':').trim();
-  return val.replace(/^["']|["']$/g, '');
+function validateAgent(val: any, field: string): 'cc' | 'codex' | undefined {
+  if (val === 'cc' || val === 'codex') return val;
+  console.error(`Error: .orb.yaml "${field}" must be "cc" or "codex", got "${val}".`);
+  process.exit(1);
+}
+
+function validateRepo(raw: any, index: number): RepoConfig {
+  if (!raw || typeof raw !== 'object') {
+    console.error(`Error: repo #${index} in .orb.yaml is invalid.`);
+    process.exit(1);
+  }
+  if (!raw.path) {
+    console.error(`Error: repo #${index} in .orb.yaml is missing "path".`);
+    process.exit(1);
+  }
+  if (!raw.base_branch) {
+    console.error(`Error: repo "${raw.path}" in .orb.yaml is missing "base_branch".`);
+    process.exit(1);
+  }
+
+  const repo: RepoConfig = {
+    path: raw.path,
+    base_branch: raw.base_branch,
+    remote: raw.remote || 'origin',
+  };
+
+  if (Array.isArray(raw.copy_files)) {
+    repo.copy_files = raw.copy_files;
+  }
+
+  return repo;
 }

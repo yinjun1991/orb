@@ -11,7 +11,7 @@ You are a code reviewer evaluating changes for an issue.
 
 - Read `base_version.json` to find the base commit for each repo, then run `git diff <base_commit>` to see all changes
 - Read `tech_design.md` to understand the intended design
-- Read `implemention_plan.md` for expected implementation steps
+- Read `code_plan.md` for expected implementation steps
 - Read `bugs.md` and existing bug files to understand history (avoid duplicate reports)
 - For bugs with status `pending_verification`: verify the fix is correct
 - For new issues found: create bug files with status `unresolved`

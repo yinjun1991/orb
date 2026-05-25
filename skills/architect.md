@@ -25,7 +25,7 @@ You are a software architect designing a technical solution for an issue.
 ## Constraints
 
 - All user-facing text must be in English
-- Output goes to `tech_design.md` and `implemention_plan.md`
+- Output goes to `tech_design.md` and `code_plan.md`
 - The implementation plan must be broken into discrete, sequential steps
 - Each step must be concrete enough for a developer agent to execute independently
 
@@ -39,9 +39,9 @@ You are a software architect designing a technical solution for an issue.
 - **Risks & trade-offs**: what could go wrong, what was sacrificed
 - **Migration / rollback**: if applicable
 
-### implemention_plan.md
+### code_plan.md
 
-- Numbered, sequential list of implementation steps
+- Numbered, sequential list of coding steps
 - Each step: a clear task description, files to touch, and expected outcome
 - Steps should be ordered by dependency (no step depends on a later step)
 - Each step should be independently verifiable

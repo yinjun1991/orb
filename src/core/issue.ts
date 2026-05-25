@@ -10,12 +10,12 @@ const ISSUES_INDEX = 'issues.md';
 const BUGS_INDEX = 'bugs.md';
 const ISSUE_FILE = 'issue.md';
 const TECH_DESIGN_FILE = 'tech_design.md';
-const IMPLEMENTION_PLAN_FILE = 'implemention_plan.md';
+const IMPLEMENTION_PLAN_FILE = 'code_plan.md';
 const BASE_VERSION_FILE = 'base_version.json';
 
 const TEMPLATE_ISSUE = 'issue.md';
 const TEMPLATE_TECH_DESIGN = 'tech_design.md';
-const TEMPLATE_IMPLEMENTION_PLAN = 'implemention_plan.md';
+const TEMPLATE_IMPLEMENTION_PLAN = 'code_plan.md';
 
 /** Resolve the orb package root (for reading templates). */
 function getOrbRoot(): string {

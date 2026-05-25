@@ -1,4 +1,4 @@
-# Implementation plan: {{TITLE}}
+# Code plan: {{TITLE}}
 
 <!-- Numbered, sequential list of implementation steps.
      Each step must be independently verifiable.

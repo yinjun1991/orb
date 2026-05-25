@@ -28,13 +28,13 @@ orb 是一款面向工程师的 cli 工具，用于编排 AI agent，覆盖从 i
 AI 阅读项目文档（repos 下的 docs/）、现有代码架构，输出技术方案。人审核方案是否合理。
 
 - 输入：`issue.md`、项目 docs
-- 产物：`tech_design.md`、`implemention_plan.md`
+- 产物：`tech_design.md`、`code_plan.md`
 
 ### 阶段 3: 编码（AI 主导，多 agents 协作）
 
-AI 开发工程师 agent 按照 `implemention_plan.md` 逐步实现，完成后运行自测。
+AI 开发工程师 agent 按照 `code_plan.md` 逐步实现，完成后运行自测。
 
-- 输入：`implemention_plan.md`、`tech_design.md`
+- 输入：`code_plan.md`、`tech_design.md`
 - 产物：代码变更、自测结果
 
 ### 阶段 4: Code review（AI 主导，自动 loop）
@@ -46,23 +46,23 @@ code-reviewer agent review 代码变更，发现 bug/问题后提交到 `bugs/` 
 ## issue 状态机
 
 ```
-[defining] → [designing] → [implementing] → [reviewing] → [done]
+[defining] → [designing] → [coding] → [reviewing] → [done]
                                                 ↑    │
                                                 └────┘
                                             fixing (自动 loop)
 ```
 
 - `defining`: 需求定义阶段，人主导，产出 issue.md
-- `designing`: 方案设计阶段，AI 主导，产出 tech_design.md 和 implemention_plan.md
-- `implementing`: 编码阶段，AI developer agent 执行 implemention_plan.md
+- `designing`: 方案设计阶段，AI 主导，产出 tech_design.md 和 code_plan.md
+- `coding`: 编码阶段，AI developer agent 执行 code_plan.md
 - `reviewing`: code review 阶段，自动 review→fix loop 运行中
 - `fixing`: developer agent 修复 code reviewer 发现的 bugs
 - `done`: issue 完成，等待合入主干
 
 状态迁移规则：
 - `defining` → `designing`: issue.md 就绪，人工触发
-- `designing` → `implementing`: tech_design.md + implemention_plan.md 审核通过，人工触发
-- `implementing` → `reviewing`: 编码完成，自动或人工触发
+- `designing` → `coding`: tech_design.md + code_plan.md 审核通过，人工触发
+- `coding` → `reviewing`: 编码完成，自动或人工触发
 - `reviewing` → `fixing`: code-reviewer 发现 bug，自动触发
 - `fixing` → `reviewing`: 所有 bug resolved，自动触发
 - `reviewing` → `done`: code-reviewer 通过，人工确认
@@ -83,18 +83,22 @@ code-reviewer agent review 代码变更，发现 bug/问题后提交到 `bugs/` 
 orb ic "issue title"
 ```
 
-### `orb implement f1`
+### `orbc code f1`
 
-启动 developer agent，按照 implemention_plan.md 执行编码任务。
+启动 developer agent，按照 code_plan.md 执行编码任务。
 
 流程：
-1. 组装上下文：issue.md + tech_design.md + implemention_plan.md + 当前代码状态
-2. 调用 `claude -p` 并将工作目录指向 worktrees/f<n>/，执行编码
-3. 编码完成后 developer agent 运行项目自测
-4. 更新 issue 状态为 `reviewing`（或由人工手动触发 review）
+1. 验证 issue 目录和 code_plan.md 存在
+2. 更新 issue 状态为 `coding`
+3. 组装 prompt，以**文件路径引用**方式传递上下文（不 inline 文件内容）：
+   - `issues/f1/tech_design.md`
+   - `issues/f1/code_plan.md`
+   - `issues/f1/base_version.json`
+4. 调用 agent（默认 Claude Code `--skill orb-developer`），工作目录设为 worktree
+5. agent 完成后更新 issue 状态为 `reviewing`
 
 ```sh
-orb implement f1
+orbc code f1
 ```
 
 ### `orb review f1`
@@ -187,24 +191,34 @@ Issue f1
 orb done f1
 ```
 
-### `orb install-skills`
+### `orbc install-skills`
 
-给 Codex/Claude Code 安装 orb 内置的 skills，将 skill 文件复制到 `~/.claude/skills/` 目录（Codex/Claude Code 自动发现并加载）。
-
-Skills 列表：
-
-| Skill | 阶段 | 调用方式 |
-|---|---|---|
-| `orb-requirement-analyst` | 需求定义 | 人手动 `/orb-requirement-analyst` |
-| `orb-architect` | 方案设计 | 人手动 `/orb-architect` |
-| `orb-developer` | 编码 / bugfix | orb CLI 编排调用 |
-| `orb-code-reviewer` | code review | orb CLI 编排调用 |
+将 orb 内置的 4 个 skill 安装到 agent 对应的 skills 目录：
 
 ```sh
-orb install-skills
+$ orbc install-skills
+Installed 4 skill(s):
+
+  /orb-requirement-analyst
+  /orb-architect
+  /orb-developer
+  /orb-code-reviewer
+
+  Claude Code: ~/.claude/skills/  (4 files)
+  Codex:       ~/.agents/skills/  (4 dirs)
 ```
 
-实现方式：orb 内置 skill 文件（位于 orb npm 包的 `skills/` 目录），`install-skills` 直接将其复制到 `~/.claude/skills/`。不需要依赖外部的 "skills" npm 包——复制文件即可，Claude Code 会自动识别。阶段 3-4 的 skill（developer、code-reviewer）虽然也安装到同一目录，但由 orb 在 loop 中通过 `claude -p --skill orb-code-reviewer` 编程调用，而非人工手动触发。
+| Skill | 阶段 | Claude Code 触发 | orb CLI 编排 |
+|---|---|---|---|
+| `orb-requirement-analyst` | 需求定义 | `/orb-requirement-analyst` | — |
+| `orb-architect` | 方案设计 | `/orb-architect` | — |
+| `orb-developer` | 编码 / bugfix | — | `orbc code` `--skill orb-developer` |
+| `orb-code-reviewer` | code review | — | `orbc review` `--skill orb-code-reviewer` |
+
+- **Claude Code**: skill 文件复制到 `~/.claude/skills/<name>.md`
+- **Codex**: skill 文件复制到 `~/.agents/skills/<name>/SKILL.md`（Agent Skills 标准格式）
+
+阶段 1-2 用户在 Claude Code/Codex 会话中手动触发；阶段 3-4 由 orb CLI 通过 `--skill` flag（Claude Code）或 inline（Codex）编程调用。
 
 ## project 目录
 
@@ -227,7 +241,7 @@ orb install-skills
 │   ├── f1/
 │   │   ├── issue.md                # issue 描述（title、背景、目标、非目标、约束）
 │   │   ├── tech_design.md          # 技术方案
-│   │   ├── implemention_plan.md    # 编码计划
+│   │   ├── code_plan.md    # 编码计划
 │   │   ├── base_version.json         # 该 issue 基于各 repos 的哪个 commit 切出
 │   │   ├── bugs.md                 # bug 列表（编号、title、状态）
 │   │   └── bugs/                   # 所有 bug 的详细文档

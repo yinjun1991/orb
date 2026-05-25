@@ -1,5 +1,7 @@
 export interface OrbConfig {
-  agent: 'cc' | 'codex';
+  agent: 'cc' | 'codex';            // default agent (fallback)
+  coding_agent?: 'cc' | 'codex';    // agent for code command
+  review_agent?: 'cc' | 'codex';    // agent for review command
   repos: RepoConfig[];
   max_review_rounds?: number;
 }
@@ -17,7 +19,7 @@ export interface IssueEntry {
   status: IssueStatus;
 }
 
-export type IssueStatus = 'defining' | 'designing' | 'implementing' | 'reviewing' | 'done';
+export type IssueStatus = 'defining' | 'designing' | 'coding' | 'reviewing' | 'done';
 
 export interface BaseVersion {
   [repoName: string]: string; // repo name -> base commit SHA

@@ -86,6 +86,8 @@ function detectFromRefs(repoPath: string): string {
 function generateConfig(repos: DetectedRepo[]): string {
   let config = `# orb project configuration
 agent: cc
+# coding_agent: cc      # agent for code command (defaults to agent)
+# review_agent: cc      # agent for review command (defaults to agent)
 
 repos:
 `;

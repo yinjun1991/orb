@@ -128,7 +128,7 @@ function statusIcon(status: string): string {
   switch (status) {
     case 'defining': return chalk.blue('◉');
     case 'designing': return chalk.magenta('◉');
-    case 'implementing': return chalk.yellow('◉');
+    case 'coding': return chalk.yellow('◉');
     case 'reviewing': return chalk.cyan('◉');
     case 'done': return chalk.green('✔');
     default: return chalk.gray('○');

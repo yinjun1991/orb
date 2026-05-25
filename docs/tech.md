@@ -308,7 +308,7 @@ orb 不在 prompt 或 contextFiles 里注入 diff 内容。agent 在 worktree �
 ```
 输入（只读）:
   issues/f1/tech_design.md          ← 理解设计意图
-  issues/f1/implemention_plan.md    ← 理解实现步骤
+  issues/f1/code_plan.md    ← 理解实现步骤
   issues/f1/base_version.json         ← 获取 base commit，自行 git diff
   issues/f1/bugs.md                 ← 了解历史 bug（避免重复报告）
   issues/f1/bugs/bug<n>.md          ← status=pending_verification 的 bug（需验证修复）
@@ -379,7 +379,7 @@ Round 1:
   │    contextFiles: [                                                │
   │      "issues/f1/base_version.json",                                 │
   │      "issues/f1/tech_design.md",                                  │
-  │      "issues/f1/implemention_plan.md",                            │
+  │      "issues/f1/code_plan.md",                            │
   │      "issues/f1/bugs.md"                                          │
   │    ]                                                              │
   │  })                                                               │
@@ -503,7 +503,7 @@ orb 内置一套 markdown 模板文件（位于 `templates/` 目录），用于�
 |---|---|---|---|---|
 | `templates/issue.md` | `issues/f<n>/issue.md` | `orb ic` | `{{TITLE}}` | 需求文档框架 |
 | `templates/tech_design.md` | `issues/f<n>/tech_design.md` | architect agent | `{{TITLE}}` | 技术方案框架 |
-| `templates/implemention_plan.md` | `issues/f<n>/implemention_plan.md` | architect agent | `{{TITLE}}` | 编码计划框架 |
+| `templates/code_plan.md` | `issues/f<n>/code_plan.md` | architect agent | `{{TITLE}}` | 编码计划框架 |
 | `templates/bug.md` | `issues/f<n>/bugs/bug<n>.md` | code-reviewer agent | 无（纯结构模板） | 单个 bug 报告格式 |
 | `templates/bugs.md` | `issues/f<n>/bugs.md` | `orb ic` | 无（纯结构模板） | bug 索引表 |
 
