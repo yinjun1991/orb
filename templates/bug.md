@@ -1,7 +1,6 @@
 # Bug <n>: <short title>
 
 - **Severity**: critical | major | minor | nit
-- **Status**: unresolved | pending_verification | resolved | blocked
 - **Related files**:
   - path/to/file.ts:<line>
 - **Description**: what is wrong

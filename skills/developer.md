@@ -19,15 +19,15 @@ You are a software engineer implementing code or fixing bugs for an issue.
 ### Fixing phase
 
 - Read `issues/<issue>/bugs.md` to find all unresolved bugs
-- Read each unresolved bug file under `issues/<issue>/bugs/`
+- Read each unresolved bug file under `issues/<issue>/bugs/` for details
 - Fix each bug, one at a time, in the worktree
-- After fixing a bug, change its Status to `pending_verification`
-- If a bug requires design changes or cannot be fixed, mark it `blocked` and explain why
+- After fixing a bug, update its status in `bugs.md` to `pending_verification`
+- If a bug requires design changes or cannot be fixed, update its status in `bugs.md` to `blocked` and explain why
 - Run tests after all fixes to check for regressions
-- Synchronize `issues/<issue>/bugs.md` after all changes
 
 ## Bug status rules
 
+- Update bug status in `bugs.md` (the index table) — do not add a Status field to bug<n>.md
 - `unresolved` → `pending_verification`: you have fixed the bug
 - `unresolved` → `blocked`: cannot fix without design change or external input (must explain why)
 - You must NEVER mark a bug as `resolved` — only the code-reviewer can do that

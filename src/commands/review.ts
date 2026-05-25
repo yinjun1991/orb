@@ -10,6 +10,7 @@ interface BugEntry {
   title: string;
   status: string;
   round: number;
+  blockReason?: string;
 }
 
 export async function reviewCommand(issueId: string): Promise<void> {
@@ -98,7 +99,8 @@ export async function reviewCommand(issueId: string): Promise<void> {
       console.log();
       console.log(chalk.yellow(`All remaining bugs are blocked — human intervention needed.`));
       for (const b of blocked) {
-        console.log(`  ${chalk.gray('⊘')} #${b.number} ${b.title} (blocked)`);
+        const reason = b.blockReason ? ` — ${b.blockReason}` : '';
+        console.log(`  ${chalk.gray('⊘')} #${b.number} ${b.title} (blocked${reason})`);
       }
       console.log();
       return;
@@ -154,23 +156,24 @@ export async function reviewCommand(issueId: string): Promise<void> {
   console.log(`  Review the remaining bugs and run ${chalk.cyan(`orbc review ${issueId}`)} again.`);
 }
 
+/**
+ * Scan bugs by reading the bugs.md index table.
+ * Status is only stored in bugs.md — bug<n>.md files are description-only.
+ */
 function scanBugs(issueDir: string, round: number): BugEntry[] {
-  const bugsDir = path.join(issueDir, 'bugs');
-  if (!fs.existsSync(bugsDir)) return [];
+  const indexPath = path.join(issueDir, 'bugs.md');
+  if (!fs.existsSync(indexPath)) return [];
 
+  const content = fs.readFileSync(indexPath, 'utf-8');
   const bugs: BugEntry[] = [];
-  for (const file of fs.readdirSync(bugsDir)) {
-    const match = file.match(/^bug(\d+)\.md$/);
-    if (!match) continue;
-
-    const content = fs.readFileSync(path.join(bugsDir, file), 'utf-8');
-    const statusMatch = content.match(/\*\*Status\*\*:\s*(\S+)/);
-    const titleMatch = content.match(/^# Bug \d+: (.+)$/m);
-    if (statusMatch) {
+  for (const line of content.split('\n')) {
+    const match = line.match(/^\|\s*(\d+)\s*\|\s*(.+?)\s*\|\s*(\S+)\s*\|\s*(.*?)\s*\|/);
+    if (match) {
       bugs.push({
         number: parseInt(match[1], 10),
-        title: titleMatch?.[1] || 'unknown',
-        status: statusMatch[1],
+        title: match[2].trim(),
+        status: match[3],
+        blockReason: match[4].trim() || undefined,
         round,
       });
     }
@@ -189,13 +192,14 @@ function buildReviewPrompt(issueId: string): string {
     `4. Read issues/${issueId}/bugs.md for existing bug history`,
     '',
     'For each pending_verification bug: verify the fix.',
-    '  - If fixed correctly → change Status to resolved',
-    '  - If still broken → change Status back to unresolved (explain why)',
+    '  - If fixed correctly → update bugs.md: change status to resolved',
+    '  - If still broken → update bugs.md: change status back to unresolved (explain why in a comment)',
     '',
     'For new issues found: create a new bug<n>.md in issues/' + issueId + '/bugs/',
-    'with Status=unresolved. Use the next available bug number.',
+    '(description only, no Status field). Add the entry to bugs.md with status=unresolved.',
+    'Use the next available bug number.',
     '',
-    'After all checks, update issues/' + issueId + '/bugs.md to reflect all changes.',
+    'After all checks, ensure issues/' + issueId + '/bugs.md is up to date.',
     '',
     'If no new bugs and all pending_verification bugs are now resolved:',
     'output NO_BUGS_FOUND',
@@ -214,12 +218,13 @@ function buildFixPrompt(issueId: string, bugs: BugEntry[]): string {
     'For each bug:',
     `1. Read issues/${issueId}/bugs/bug<n>.md for details`,
     `2. Fix the code in the worktree`,
-    `3. Change the bug file Status to pending_verification`,
+    `3. Update the bug status in issues/${issueId}/bugs.md to pending_verification`,
     '',
     'If a bug cannot be fixed (needs design change):',
-    '  - Change Status to blocked and explain why',
+    '  - Update the bug status in bugs.md to blocked',
+    '  - Fill the Block reason column explaining why',
     '',
-    'After all fixes, update issues/' + issueId + '/bugs.md.',
+    'After all fixes, ensure issues/' + issueId + '/bugs.md is up to date.',
     'Run tests to check for regressions.',
   ].join('\n');
 }

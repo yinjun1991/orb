@@ -29,8 +29,9 @@ You are a code reviewer evaluating changes for an issue.
 
 ## Bug status rules
 
+- Update bug status in `bugs.md` (the index table)
 - `pending_verification` → `resolved`: fix confirmed correct
-- `pending_verification` → `unresolved`: fix is incorrect or incomplete (explain why in the bug file)
+- `pending_verification` → `unresolved`: fix is incorrect or incomplete (explain why in a comment)
 - Only you can mark a bug `resolved` — the developer agent cannot
 
 ## Constraints
@@ -50,7 +51,6 @@ For each new bug found, create `bug<n>.md` with this structure:
 # Bug <n>: <short title>
 
 - **Severity**: critical | major | minor | nit
-- **Status**: unresolved
 - **Related files**:
   - path/to/file.ts:<line>
 - **Description**: what is wrong
@@ -59,4 +59,4 @@ For each new bug found, create `bug<n>.md` with this structure:
 - **Fix suggestion** (optional): how to resolve it
 ```
 
-After creating bug files, update `issues/<issue>/bugs.md` (the index).
+After creating bug files, add entries to `issues/<issue>/bugs.md` with status=unresolved.

@@ -243,9 +243,9 @@ Installed 4 skill(s):
 │   │   ├── tech_design.md          # 技术方案
 │   │   ├── code_plan.md    # 编码计划
 │   │   ├── base_version.json         # 该 issue 基于各 repos 的哪个 commit 切出
-│   │   ├── bugs.md                 # bug 列表（编号、title、状态）
-│   │   └── bugs/                   # 所有 bug 的详细文档
-│   │       ├── bug1.md         # 包含 title、描述、严重程度、关联文件:行号
+│   │   ├── bugs.md                 # bug 列表 + 状态（唯一数据源）
+│   │   └── bugs/                   # bug 详细描述（不含状态字段）
+│   │       ├── bug1.md         # title、描述、严重程度、关联文件:行号
 │   │       └── bug2.md
 │   └── f2/
 │       └── ...
@@ -260,8 +260,6 @@ code-reviewer 产出的每个 bug 文件（`issues/f<n>/bugs/bug<n>.md`）格式
 # Bug <n>: <简短 title>
 
 - **Severity**: critical | major | minor | nit
-- **Status**: unresolved | pending_verification | resolved | blocked
-- **Round**: <发现该 bug 的 review 轮次>
 - **Related files**:
   - repo1/src/foo.ts:42
   - repo1/src/bar.ts:18
@@ -271,12 +269,28 @@ code-reviewer 产出的每个 bug 文件（`issues/f<n>/bugs/bug<n>.md`）格式
 - **Fix suggestion** (optional): <修复建议>
 ```
 
-Bug 状态流转：
+Bug 状态**只存储在 `bugs.md` 索引表中**，bug 文件不含 Status 字段。
+
+### bugs.md 格式
+
+```markdown
+# Bugs
+
+| ID | Title | Status |
+|----|-------|--------|
+| 1  | Null check missing      | unresolved |
+| 2  | SQL injection risk      | pending_verification |
+| 3  | Missing error boundary  | resolved |
+```
+
+### Bug 状态流转
+
 - `unresolved`: code-reviewer 发现的新问题，待 developer 修复
 - `pending_verification`: developer 已修复，等待 code-reviewer 验证
 - `resolved`: code-reviewer 验证通过，修复已确认（只有 code-reviewer 可标记）
-- `blocked`: developer 无法修复，需变更设计或人工介入
+- `blocked`: 人工或 developer 标记为忽略/无法修复
 
 关键规则：
 - developer 只能将 status 改为 `pending_verification` 或 `blocked`，不能直接标 `resolved`
 - code-reviewer 将 `pending_verification` → `resolved`（通过）或 → `unresolved`（打回）
+- 所有状态更新都在 `bugs.md` 中，bug 文件只描述问题

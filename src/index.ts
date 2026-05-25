@@ -7,6 +7,7 @@ import { initCommand } from './commands/init.js';
 import { statusCommand } from './commands/status.js';
 import { codeCommand } from './commands/code.js';
 import { reviewCommand } from './commands/review.js';
+import { blockCommand } from './commands/block.js';
 import { installSkillsCommand } from './commands/install-skills.js';
 import fs from 'fs-extra';
 import path from 'path';
@@ -43,7 +44,8 @@ program
   .argument('<title>', 'issue title')
   .action(async (title: string) => {
     await icCommand(title);
-  });
+  })
+  .addHelpText('after', '\nExample:\n  orbc ic "Add user authentication"');
 
 program
   .command('sync')
@@ -55,25 +57,38 @@ program
 program
   .command('status')
   .description('Show issue status and bug list')
-  .argument('[issueId]', 'issue ID (e.g. f1), omit to list all issues')
+  .argument('[issueId]', 'issue ID with f-prefix (e.g. f1), omit to list all')
   .action(async (issueId?: string) => {
     await statusCommand(issueId);
-  });
+  })
+  .addHelpText('after', '\nExamples:\n  orbc status          # list all issues\n  orbc status f1       # show f1 detail');
 
 program
   .command('code')
-  .description('Run the developer agent to code an issue')
-  .argument('<issueId>', 'issue ID (e.g. f1)')
+  .description('Run the developer agent on an issue')
+  .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
   .action(async (issueId: string) => {
     await codeCommand(issueId);
-  });
+  })
+  .addHelpText('after', '\nExample:\n  orbc code f1');
 
 program
   .command('review')
   .description('Run the review→fix loop on an issue')
-  .argument('<issueId>', 'issue ID (e.g. f1)')
+  .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
   .action(async (issueId: string) => {
     await reviewCommand(issueId);
-  });
+  })
+  .addHelpText('after', '\nExample:\n  orbc review f1');
+
+program
+  .command('block')
+  .description('Block bugs to skip them in review')
+  .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
+  .argument('<bugNums>', 'bug numbers, comma-separated (e.g. 1,2,3)')
+  .action(async (issueId: string, bugNums: string) => {
+    await blockCommand(issueId, bugNums);
+  })
+  .addHelpText('after', '\nExamples:\n  orbc block f1 3       # block bug #3\n  orbc block f1 1,2,4   # block multiple bugs');
 
 program.parse();

@@ -1,4 +1,4 @@
 # Bugs
 
-| ID | Title | Status |
-|----|-------|--------|
+| ID | Title | Status | Block reason |
+|----|-------|--------|--------------|

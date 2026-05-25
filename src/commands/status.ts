@@ -13,6 +13,7 @@ interface BugEntry {
   id: string;
   title: string;
   status: string;
+  blockReason?: string;
 }
 
 const ISSUES_DIR = 'issues';
@@ -63,9 +64,14 @@ function readBugsIndex(projectRoot: string, issueId: string): BugEntry[] {
   const content = fs.readFileSync(bugsPath, 'utf-8');
   const entries: BugEntry[] = [];
   for (const line of content.split('\n')) {
-    const match = line.match(/^\|\s*(\d+)\s*\|\s*(.+?)\s*\|\s*(\S+)\s*\|/);
+    const match = line.match(/^\|\s*(\d+)\s*\|\s*(.+?)\s*\|\s*(\S+)\s*\|\s*(.*?)\s*\|/);
     if (match) {
-      entries.push({ id: match[1], title: match[2].trim(), status: match[3] });
+      entries.push({
+        id: match[1],
+        title: match[2].trim(),
+        status: match[3],
+        blockReason: match[4].trim() || undefined,
+      });
     }
   }
   return entries;
@@ -108,7 +114,8 @@ function showIssueDetail(projectRoot: string, issueId: string, allIssues: IssueE
       console.log();
       for (const bug of bugs) {
         const bIcon = bugStatusIcon(bug.status);
-        console.log(`    ${bIcon} #${bug.id}  ${bug.title}  ${chalk.gray(`(${bug.status})`)}`);
+        const reason = bug.blockReason ? chalk.gray(` — ${bug.blockReason}`) : '';
+        console.log(`    ${bIcon} #${bug.id}  ${bug.title}  ${chalk.gray(`(${bug.status})`)}${reason}`);
       }
     }
   }
