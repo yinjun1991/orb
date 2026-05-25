@@ -504,8 +504,9 @@ orb 内置一套 markdown 模板文件（位于 `templates/` 目录），用于�
 | `templates/issue.md` | `issues/f<n>/issue.md` | `orb ic` | `{{TITLE}}` | 需求文档框架 |
 | `templates/tech_design.md` | `issues/f<n>/tech_design.md` | architect agent | `{{TITLE}}` | 技术方案框架 |
 | `templates/code_plan.md` | `issues/f<n>/code_plan.md` | architect agent | `{{TITLE}}` | 编码计划框架 |
-| `templates/bug.md` | `issues/f<n>/bugs/bug<n>.md` | code-reviewer agent | 无（纯结构模板） | 单个 bug 报告格式 |
 | `templates/bugs.md` | `issues/f<n>/bugs.md` | `orb ic` | 无（纯结构模板） | bug 索引表 |
+
+`bug<n>.md` 的格式在 `orb-code-reviewer` skill 中定义，不需要单独模板。
 
 `base_version.json` 不需要模板——由代码直接 `JSON.stringify` 生成。
 
