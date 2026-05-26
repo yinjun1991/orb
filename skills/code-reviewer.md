@@ -29,9 +29,9 @@ You are a code reviewer evaluating changes for an issue.
 
 ## Bug status rules
 
-- Update bug status in `bugs.md` (the index table)
-- `pending_verification` → `resolved`: fix confirmed correct
-- `pending_verification` → `unresolved`: fix is incorrect or incomplete (explain why in a comment)
+- Update bug status in `bugs.md` (the index table) — bug<n>.md files contain history only, not status
+- `pending_verification` → `resolved`: fix confirmed correct. Write the confirmation in the current round's `Fix` entry.
+- `pending_verification` → `unresolved`: fix is incorrect or incomplete. Append a new `### Round N` to the bug's `## History` section with a `Review` entry explaining what's wrong and a new fix suggestion.
 - Only you can mark a bug `resolved` — the developer agent cannot
 
 ## Constraints
@@ -56,7 +56,27 @@ For each new bug found, create `bug<n>.md` with this structure:
 - **Description**: what is wrong
 - **Expected**: what should happen
 - **Actual** (if applicable): what currently happens
-- **Fix suggestion** (optional): how to resolve it
+
+## History
+
+### Round 1
+
+- **Review**: [your findings + fix suggestion — be specific about the approach, not just the symptom. If you cannot determine a fix, mark the bug as blocked with reason "needs design discussion" instead of creating it as unresolved.]
+- **Fix**: _To be filled by developer._
 ```
 
-After creating bug files, add entries to `issues/<issue>/bugs.md` with status=unresolved. Leave the `Block reason` column empty for unresolved bugs.
+When re-reviewing a `pending_verification` bug:
+
+- If the fix is correct: update the current round's `Fix` entry with the result, e.g. `Fix confirmed — status → resolved.` Then update `bugs.md` to `resolved`.
+- If the fix is wrong: append a new round to `## History`, e.g.:
+
+```
+### Round 2
+
+- **Review**: [why the previous fix was insufficient + new suggestion]
+- **Fix**: _To be filled by developer._
+```
+
+Then update `bugs.md` back to `unresolved`.
+
+After creating or updating bug files, update `issues/<issue>/bugs.md` accordingly. Leave the `Block reason` column empty for unresolved bugs.

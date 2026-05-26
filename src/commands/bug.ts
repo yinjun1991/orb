@@ -24,9 +24,19 @@ export async function bugAddCommand(issueId: string, title: string): Promise<voi
   const bugContent = [
     `# Bug #${nextNum}: ${title}`,
     '',
-    '## Description',
+    '- **Severity**: ',
+    '- **Related files**:',
+    '  - ',
+    '- **Description**: ',
+    '- **Expected**: ',
+    '- **Actual** (if applicable): ',
     '',
-    '_Add details here._',
+    '## History',
+    '',
+    '### Round 1',
+    '',
+    '- **Review**: ',
+    '- **Fix**: _To be filled by developer._',
     '',
   ].join('\n');
   fs.writeFileSync(bugFile, bugContent);

@@ -19,10 +19,17 @@ You are a software engineer implementing code or fixing bugs for an issue.
 ### Fixing phase
 
 - Read `issues/<issue>/bugs.md` to find all unresolved bugs
-- Read each unresolved bug file under `issues/<issue>/bugs/` for details
-- Fix each bug, one at a time, in the worktree
-- After fixing a bug, update its status in `bugs.md` to `pending_verification`
-- If a bug requires design changes or cannot be fixed, update its status in `bugs.md` to `blocked` and fill the `Block reason` column
+- For each unresolved bug, before writing any code:
+  1. Read the full bug file under `issues/<issue>/bugs/` for context and the reviewer's latest fix suggestion (in the most recent `### Round N` → `Review` entry)
+  2. Evaluate whether the bug is valid:
+     - **False positive**: write `False positive — [reason]` in the current round's `Fix` entry. Update `bugs.md` to `blocked` with the reason. Do not fix.
+     - **Valid bug**: proceed to step 3
+  3. Write your fix approach in the current round's `Fix` entry:
+     - If you agree with the reviewer's suggestion: `Same as suggestion.`
+     - If you disagree or the suggestion is insufficient: describe your approach in detail — what to change, why, and any trade-offs
+  4. Implement the fix in the worktree
+  5. Append the result to the `Fix` entry, e.g. `→ pending_verification`. Then update `bugs.md` to `pending_verification`.
+- If a bug requires design changes or cannot be fixed, write the reason in the current round's `Fix` entry, then update `bugs.md` to `blocked` with the reason in the `Block reason` column.
 - Run tests after all fixes to check for regressions
 
 ## Bug status rules
