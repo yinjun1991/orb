@@ -117,12 +117,12 @@ export function createIssue(projectRoot: string, issueId: string, title: string,
     const worktreePath = path.join(worktreesDir, path.basename(repo.path));
     execSync(`git worktree add -b ${issueId} ${worktreePath} ${commit}`, { cwd: repoPath, stdio: 'inherit' });
 
-    // Copy untracked files (e.g. .env) from source repo to worktree
+    // Copy untracked files/directories (e.g. .env, .vscode) from source repo to worktree
     for (const file of repo.copy_files || []) {
       const src = path.join(repoPath, file);
       const dest = path.join(worktreePath, file);
       if (fs.existsSync(src)) {
-        fs.copyFileSync(src, dest);
+        fs.copySync(src, dest, { overwrite: true });
       }
     }
   }
