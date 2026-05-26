@@ -1,6 +1,6 @@
 ---
 name: orb-developer
-description: Developer agent for the implementing and fixing phases of an orb issue. Follows Karpathy-inspired coding guidelines: think before coding, simplicity first, surgical changes, goal-driven execution.
+description: "Developer agent for the implementing and fixing phases of an orb issue. Follows Karpathy-inspired coding guidelines: think before coding, simplicity first, surgical changes, goal-driven execution."
 ---
 
 # orb-developer
