@@ -7,7 +7,7 @@ import { initCommand } from './commands/init.js';
 import { statusCommand } from './commands/status.js';
 import { codeCommand } from './commands/code.js';
 import { reviewCommand } from './commands/review.js';
-import { blockCommand } from './commands/block.js';
+import { bugAddCommand, bugBlockCommand } from './commands/bug.js';
 import { cleanCommand } from './commands/clean.js';
 import { prCommand } from './commands/pr.js';
 import { dropCommand } from './commands/drop.js';
@@ -84,16 +84,28 @@ program
   })
   .addHelpText('after', '\nExample:\n  orbc review f1');
 
-program
+const bugCmd = program
+  .command('bug')
+  .description('Manage bugs for an issue');
+
+bugCmd
+  .command('add')
+  .description('Add a bug to an issue')
+  .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
+  .argument('<title>', 'bug title')
+  .action(async (issueId: string, title: string) => {
+    await bugAddCommand(issueId, title);
+  });
+
+bugCmd
   .command('block')
   .description('Block bugs to skip them in review')
   .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
   .argument('<bugNums>', 'bug numbers, comma-separated (e.g. 1,2,3)')
   .argument('[reason]', 'reason for blocking (optional)')
   .action(async (issueId: string, bugNums: string, reason?: string) => {
-    await blockCommand(issueId, bugNums, reason);
-  })
-  .addHelpText('after', '\nExamples:\n  orbc block f1 3                            # block without reason\n  orbc block f1 1,2 "not a real risk"        # block with reason');
+    await bugBlockCommand(issueId, bugNums, reason);
+  });
 
 program
   .command('pr')

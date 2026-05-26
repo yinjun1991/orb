@@ -84,9 +84,24 @@ function readBugsIndex(projectRoot: string, issueId: string): BugEntry[] {
   return entries;
 }
 
+const STATUS_ORDER: Record<string, number> = {
+  defining: 0,
+  designing: 1,
+  coding: 2,
+  reviewing: 3,
+  merging: 4,
+  done: 5,
+};
+
 function showAllIssues(entries: IssueEntry[]): void {
+  const sorted = [...entries].sort((a, b) => {
+    const orderA = STATUS_ORDER[a.status] ?? 5;
+    const orderB = STATUS_ORDER[b.status] ?? 5;
+    return orderA - orderB;
+  });
+
   console.log(chalk.bold('Issues:\n'));
-  for (const entry of entries) {
+  for (const entry of sorted) {
     const icon = statusIcon(entry.status);
     const pr = entry.prUrl ? chalk.underline(`\n      ${entry.prUrl}`) : '';
     console.log(`  ${icon} ${chalk.cyan(entry.id)}  ${entry.title}  ${chalk.gray(`(${entry.status})`)}${pr}`);
