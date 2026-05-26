@@ -7,6 +7,8 @@ export interface RunOptions {
   prompt: string;
   workdir: string;
   contextFiles: string[];
+  /** 'interactive' (default) keeps the session open for user intervention; 'auto' runs non-interactively and exits when done. */
+  mode?: 'interactive' | 'auto';
 }
 
 /**
@@ -25,8 +27,11 @@ function runClaudeCode(opts: RunOptions): Promise<void> {
   return new Promise((resolve, reject) => {
     const prompt = buildPrompt(opts);
 
-    // Interactive mode (no -p) — user can intervene when agent asks questions
-    const child = spawn('claude', [prompt], {
+    const args = opts.mode === 'auto'
+      ? ['-p', '--dangerously-skip-permissions', prompt]
+      : [prompt];
+
+    const child = spawn('claude', args, {
       stdio: 'inherit',
       cwd: opts.workdir,
     });
@@ -44,14 +49,17 @@ function runClaudeCode(opts: RunOptions): Promise<void> {
 
 function runCodex(opts: RunOptions): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Interactive mode — Codex discovers skills from .agents/skills/
     const prompt = [
       `Use the $${opts.skill} skill.`,
       '',
       buildPrompt(opts),
     ].join('\n');
 
-    const child = spawn('codex', [prompt], {
+    const args = opts.mode === 'auto'
+      ? ['exec', '--dangerously-bypass-approvals-and-sandbox', '-C', opts.workdir, prompt]
+      : [prompt];
+
+    const child = spawn('codex', args, {
       stdio: 'inherit',
       cwd: opts.workdir,
     });

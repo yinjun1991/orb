@@ -35,14 +35,16 @@ export async function reviewCommand(issueId: string): Promise<void> {
 
   const repoName = path.basename(config.repos[0].path);
   const worktreePath = path.join(projectRoot, 'worktrees', issueId, repoName);
-  const agent: AgentType = config.review_agent ?? config.agent;
+  const reviewAgent: AgentType = config.review_agent ?? config.agent;
+  const fixAgent: AgentType = config.coding_agent ?? config.agent;
   const maxRounds = config.max_review_rounds ?? 3;
 
   updateIssueStatus(projectRoot, issueId, 'reviewing');
 
   console.log(chalk.bold(`Reviewing ${issueId}`));
   console.log();
-  console.log(`  ${chalk.gray('Agent:')}    ${agent}`);
+  console.log(`  ${chalk.gray('Review agent:')}  ${reviewAgent}`);
+  console.log(`  ${chalk.gray('Fix agent:')}     ${fixAgent}`);
   console.log(`  ${chalk.gray('Max rounds:')} ${maxRounds}`);
   console.log();
 
@@ -56,8 +58,9 @@ export async function reviewCommand(issueId: string): Promise<void> {
     const reviewSpinner = ora('Running code-reviewer agent...').start();
 
     try {
-      await runAgent(agent, {
+      await runAgent(reviewAgent, {
         skill: 'orb-code-reviewer',
+        mode: 'auto',
         workdir: worktreePath,
         prompt: buildReviewPrompt(issueId),
         contextFiles: [
@@ -121,8 +124,9 @@ export async function reviewCommand(issueId: string): Promise<void> {
     const bugFiles = unresolved.map(b => `issues/${issueId}/bugs/bug${b.number}.md`);
 
     try {
-      await runAgent(agent, {
+      await runAgent(fixAgent, {
         skill: 'orb-developer',
+        mode: 'auto',
         workdir: worktreePath,
         prompt: buildFixPrompt(issueId, unresolved),
         contextFiles: [
