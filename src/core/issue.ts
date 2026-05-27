@@ -69,8 +69,21 @@ export function generateBugsIndex(): string {
 
 /**
  * Get the current commit SHA for a repo on its base branch.
+ * Fetches from the remote first if one is configured and reachable,
+ * so the worktree is always based on the latest upstream state.
  */
-export function getRepoHeadCommit(repoPath: string, baseBranch: string): string {
+export function getRepoHeadCommit(repoPath: string, baseBranch: string, remote?: string): string {
+  if (remote) {
+    try {
+      execSync(`git remote get-url ${remote}`, { cwd: repoPath, stdio: 'pipe' });
+      execSync(`git fetch ${remote}`, { cwd: repoPath, stdio: 'pipe' });
+      const output = execSync(`git rev-parse remotes/${remote}/${baseBranch}`, { cwd: repoPath, encoding: 'utf-8' });
+      return output.trim();
+    } catch {
+      // remote unreachable or branch doesn't track it — fall back to local
+    }
+  }
+
   const output = execSync(`git rev-parse ${baseBranch}`, { cwd: repoPath, encoding: 'utf-8' });
   return output.trim();
 }
@@ -110,7 +123,7 @@ export function createIssue(projectRoot: string, issueId: string, title: string,
 
   for (const repo of repos) {
     const repoPath = path.resolve(projectRoot, repo.path);
-    const commit = getRepoHeadCommit(repoPath, repo.base_branch);
+    const commit = getRepoHeadCommit(repoPath, repo.base_branch, repo.remote);
     baseVersions[path.basename(repo.path)] = commit;
 
     // Create git worktree
@@ -126,6 +139,16 @@ export function createIssue(projectRoot: string, issueId: string, title: string,
       }
     }
   }
+
+  // Write VS Code workspace file
+  const workspaceFile = path.join(worktreesDir, `${issueId}.code-workspace`);
+  const workspaceContent = {
+    folders: repos.map(r => ({
+      path: path.basename(r.path),
+      name: path.basename(r.path),
+    })),
+  };
+  fs.writeFileSync(workspaceFile, JSON.stringify(workspaceContent, null, 2) + '\n');
 
   // Write base_version.json
   fs.writeFileSync(path.join(issueDir, BASE_VERSION_FILE), generateBaseVersion(baseVersions));
