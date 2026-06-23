@@ -1,9 +1,18 @@
 import { findProjectRoot, parseOrbConfig } from '../core/config.js';
 import fs from 'fs-extra';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import chalk from 'chalk';
+import ora from 'ora';
 import * as readline from 'readline';
+
+const execFileAsync = promisify(execFile);
+
+interface DropWarning {
+  repoName: string;
+  message: string;
+}
 
 export async function dropCommand(issueId: string, opts: { force?: boolean }): Promise<void> {
   const projectRoot = findProjectRoot();
@@ -42,53 +51,84 @@ export async function dropCommand(issueId: string, opts: { force?: boolean }): P
   }
 
   const configPath = path.join(projectRoot, '.orb.yaml');
-  if (fs.existsSync(configPath)) {
-    const config = parseOrbConfig(fs.readFileSync(configPath, 'utf-8'));
+  const config = fs.existsSync(configPath)
+    ? parseOrbConfig(fs.readFileSync(configPath, 'utf-8'))
+    : null;
 
-    // Clean worktree
-    const worktreeDir = path.join(projectRoot, 'worktrees', issueId);
-    if (fs.existsSync(worktreeDir)) {
-      for (const repo of config.repos) {
-        const repoPath = path.resolve(projectRoot, repo.path);
-        const wtPath = path.join(worktreeDir, path.basename(repo.path));
-        if (!fs.existsSync(wtPath)) continue;
-        runOrWarn(`git worktree remove ${wtPath} --force`, repoPath);
-      }
-      fs.removeSync(worktreeDir);
+  const warnings: DropWarning[] = [];
+  const spinner = ora(`Dropping ${chalk.cyan(issueId)}...`).start();
+  try {
+    if (config) {
+      const worktreeDir = path.join(projectRoot, 'worktrees', issueId);
+      const warningGroups = await Promise.all(
+        config.repos.map(repo => dropRepo(projectRoot, worktreeDir, issueId, repo.path, repo.remote || 'origin')),
+      );
+      warnings.push(...warningGroups.flat());
+
+      if (fs.existsSync(worktreeDir)) fs.removeSync(worktreeDir);
     }
 
-    // Delete local + remote branches (always try)
-    for (const repo of config.repos) {
-      const repoPath = path.resolve(projectRoot, repo.path);
-      const remote = repo.remote || 'origin';
-      runOrWarn(`git branch -D ${issueId}`, repoPath);
-      runOrWarn(`git push ${remote} --delete ${issueId}`, repoPath);
+    // Remove issue directory (if exists)
+    if (fs.existsSync(issueDir)) {
+      fs.removeSync(issueDir);
     }
+
+    // Remove from issues.md
+    removeFromIndex(projectRoot, issueId);
+
+    if (warnings.length > 0) {
+      spinner.succeed(`${chalk.cyan(issueId)} dropped with ${warnings.length} warning(s).`);
+      printWarnings(warnings);
+    } else {
+      spinner.succeed(`${chalk.cyan(issueId)} dropped.`);
+    }
+  } catch (err: any) {
+    spinner.fail(`Failed to drop ${chalk.cyan(issueId)}: ${err.message}`);
+    process.exit(1);
   }
-
-  // Remove issue directory (if exists)
-  if (fs.existsSync(issueDir)) {
-    fs.removeSync(issueDir);
-  }
-
-  // Remove from issues.md
-  removeFromIndex(projectRoot, issueId);
-
-  console.log();
-  console.log(chalk.gray(`${issueId} dropped.`));
 }
 
-/** Run a shell command, print a warning on failure instead of crashing. */
-function runOrWarn(cmd: string, cwd: string): void {
+async function dropRepo(projectRoot: string, worktreeDir: string, issueId: string, repoConfigPath: string, remote: string): Promise<DropWarning[]> {
+  const repoPath = path.resolve(projectRoot, repoConfigPath);
+  const repoName = path.basename(repoConfigPath);
+  const wtPath = path.join(worktreeDir, repoName);
+  const warnings: DropWarning[] = [];
+
+  if (fs.existsSync(wtPath)) {
+    const warning = await runGit(['worktree', 'remove', wtPath, '--force'], repoPath);
+    if (warning) warnings.push({ repoName, message: warning });
+  }
+
+  for (const args of [
+    ['branch', '-D', issueId],
+    ['push', remote, '--delete', issueId],
+  ]) {
+    const warning = await runGit(args, repoPath);
+    if (warning) warnings.push({ repoName, message: warning });
+  }
+
+  return warnings;
+}
+
+/** Run a git command and return unexpected failures as warnings. */
+async function runGit(args: string[], cwd: string): Promise<string | null> {
   try {
-    execSync(cmd, { cwd, stdio: 'pipe' });
+    await execFileAsync('git', args, { cwd });
+    return null;
   } catch (err: any) {
-    const msg = err.stderr?.toString().trim() || err.message || '';
+    const msg = String(err.stderr || err.message || '').trim();
     // Expected: branch not pushed, not yet created, already deleted
-    if (msg.includes('remote ref does not exist')) return;
-    if (msg.includes('branch not found')) return;
-    if (msg.includes('is not a working tree')) return;
-    console.error(chalk.yellow(`  Warning: ${msg}`));
+    if (msg.includes('remote ref does not exist')) return null;
+    if (msg.includes('branch not found')) return null;
+    if (/branch ['"].+['"] not found/.test(msg)) return null;
+    if (msg.includes('is not a working tree')) return null;
+    return msg;
+  }
+}
+
+function printWarnings(warnings: DropWarning[]): void {
+  for (const warning of warnings) {
+    console.error(chalk.yellow(`  Warning (${warning.repoName}): ${warning.message}`));
   }
 }
 
