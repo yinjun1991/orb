@@ -235,7 +235,7 @@ fs.writeFileSync(
 
 2. **invoke 返回的是纯文本还是结构化输出？** 当前设计返回纯文本，因为 code-reviewer 的 `NO_BUGS_FOUND` 信号和 bug 文件可以用字符串匹配 + 文件检测来判断，足够简单。如果后续 agent 需要返回结构化数据，再考虑扩展 `InvokeResult`——但 YAGNI 原则，先保持文本。
 
-3. **skill 安装后对 Codex 有意义吗？** 有，但不是给 orb 用的。安装后用户可以在 Codex 会话中手动 `$orb-code-reviewer` 触发——对应阶段 1-2 的人工使用场景。阶段 3-4 的自动化 loop 走 inline 方式。对于 Claude Code，`--skill` 直接引用已安装的 skill 文件，安装和 invoke 路径统一。
+3. **skill 安装后对 Codex 有意义吗？** 有，但不是给 orb 用的。安装后用户可以在 Codex 会话中手动触发已安装的 orb skill，例如 `$orb-architect`。阶段 3-4 的自动化 loop 走 inline 方式。对于 Claude Code，`--skill` 直接引用已安装的 skill 文件，安装和 invoke 路径统一。
 
 ## review→fix loop 实现
 
@@ -532,4 +532,3 @@ architect skill prompt:
 - **模板是 orb 的源码，不是用户配置文件。** 模板随 orb npm 包版本管理，用户不需要手动编辑
 - **模板与 skill 解耦。** skill 定义 agent 行为规范，模板定义文档结构。两者可以独立演化
 - **占位符极简。** 不使用复杂模板引擎，`{{VAR}}` 替换足以覆盖所有场景
-

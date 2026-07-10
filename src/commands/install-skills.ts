@@ -11,7 +11,6 @@ interface SkillInfo {
 }
 
 const SKILL_FILES = [
-  'requirement-analyst.md',
   'architect.md',
   'developer.md',
   'code-reviewer.md',

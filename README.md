@@ -14,7 +14,7 @@ orbc init                 # create .orb.yaml + install skills for Claude Code / 
 orbc sync                 # pull latest code for all repos
 
 orbc ic "Add 2FA"         # create issue f1
-# → define requirements with Claude Code: /orb-requirement-analyst
+# → refine requirements in issues/f1/issue.md
 # → design the solution:   /orb-architect
 
 orbc code f1              # AI implements the code plan
@@ -34,7 +34,7 @@ orbc clean f1             # remove worktree
 
 | Stage | Who | How |
 |---|---|---|
-| **Defining** | You + AI | Start Claude Code or Codex in the project, run `/orb-requirement-analyst` to discuss and refine the issue. Writes `issue.md`. |
+| **Defining** | You | Refine `issues/<id>/issue.md` until requirements are clear enough for design. |
 | **Designing** | AI + you | Run `/orb-architect` to produce `tech_design.md` and `code_plan.md`. Review the output before proceeding. |
 | **Coding** | orbc | `orbc code f1` — developer agent implements the code plan in an isolated worktree. |
 | **Reviewing** | orbc | `orbc review f1` — automated loop: code-reviewer finds bugs → developer fixes → repeat until clean. |
@@ -151,12 +151,12 @@ orbc handles phases where AI works autonomously (coding, review→fix loop). For
 
 | Phase | Tool | Skill |
 |---|---|---|
-| Requirements discussion | Claude Code / Codex | `/orb-requirement-analyst` |
+| Requirements discussion | Editor / Claude Code / Codex | Edit `issues/<id>/issue.md` |
 | Technical design | Claude Code / Codex | `/orb-architect` |
 | Coding (autonomous) | `orbc code f1` | — |
 | Review loop (autonomous) | `orbc review f1` | — |
 
-Start Claude Code or Codex in your project root. The skills are installed by `orbc init` to `.claude/skills/` and `.agents/skills/`, so `/orb-architect` works immediately.
+Start Claude Code or Codex in your project root. The agent skills are installed by `orbc init` to `.claude/skills/` and `.agents/skills/`, so `/orb-architect` works immediately.
 
 ## Project structure
 

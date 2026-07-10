@@ -35,7 +35,7 @@ export async function icCommand(title: string): Promise<void> {
     console.log(`  ${chalk.gray('Worktree:')}       worktrees/${issueId}/`);
     console.log(`  ${chalk.gray('Status:')}          defining`);
     console.log();
-    console.log(`  Next: define requirements with ${chalk.cyan('/orb-requirement-analyst')}`);
+    console.log(`  Next: refine ${chalk.cyan(`issues/${issueId}/issue.md`)}, then run ${chalk.cyan('/orb-architect')}`);
   } catch (err: any) {
     spinner.fail(`Failed to create issue: ${err.message}`);
     process.exit(1);

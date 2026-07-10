@@ -14,11 +14,11 @@ orb 是一款面向工程师的 cli 工具，用于编排 AI agent，覆盖从 i
 
 ## issue 流程与 AI agent
 
-每个 issue 经过四个阶段，每个阶段由对应的 AI agent 主导：
+每个 issue 经过四个阶段。需求定义由人维护 `issue.md`，后续阶段由对应的 AI agent 或 orb CLI 编排：
 
 ### 阶段 1: 需求定义（人主导，AI 辅助）
 
-使用者借助 Codex/Claude Code 讨论需求、澄清边界。AI 作为需求分析师，challenge 使用者的思路、帮助完善需求描述。
+使用者直接维护 `issue.md`，也可以借助 Codex/Claude Code 讨论需求、澄清边界。orb 不再内置需求分析 skill。
 
 - 产物：`issue.md`
 - 若是 bug issue，可跳过此阶段
@@ -188,24 +188,22 @@ orbc clean f1
 
 ### `orbc install-skills`
 
-将 orb 内置的 4 个 skill 安装到 agent 对应的 skills 目录：
+将 orb 内置的 3 个 skill 安装到 agent 对应的 skills 目录：
 
 ```sh
 $ orbc install-skills
-Installed 4 skill(s):
+Installed 3 skill(s):
 
-  /orb-requirement-analyst
   /orb-architect
   /orb-developer
   /orb-code-reviewer
 
-  Claude Code: ~/.claude/skills/  (4 files)
-  Codex:       ~/.agents/skills/  (4 dirs)
+  Claude Code: ~/.claude/skills/  (3 files)
+  Codex:       ~/.agents/skills/  (3 dirs)
 ```
 
 | Skill | 阶段 | Claude Code 触发 | orb CLI 编排 |
 |---|---|---|---|
-| `orb-requirement-analyst` | 需求定义 | `/orb-requirement-analyst` | — |
 | `orb-architect` | 方案设计 | `/orb-architect` | — |
 | `orb-developer` | 编码 / bugfix | — | `orbc code` `--skill orb-developer` |
 | `orb-code-reviewer` | code review | — | `orbc review` `--skill orb-code-reviewer` |
@@ -213,7 +211,7 @@ Installed 4 skill(s):
 - **Claude Code**: skill 文件复制到 `~/.claude/skills/<name>.md`
 - **Codex**: skill 文件复制到 `~/.agents/skills/<name>/SKILL.md`（Agent Skills 标准格式）
 
-阶段 1-2 用户在 Claude Code/Codex 会话中手动触发；阶段 3-4 由 orb CLI 通过 `--skill` flag（Claude Code）或 inline（Codex）编程调用。
+阶段 1 用户直接维护 `issue.md`；阶段 2 用户在 Claude Code/Codex 会话中手动触发；阶段 3-4 由 orb CLI 通过 `--skill` flag（Claude Code）或 inline（Codex）编程调用。
 
 ## project 目录
 
