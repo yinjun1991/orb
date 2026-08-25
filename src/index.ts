@@ -12,6 +12,7 @@ import { cleanCommand } from './commands/clean.js';
 import { prCommand } from './commands/pr.js';
 import { dropCommand } from './commands/drop.js';
 import { installSkillsCommand } from './commands/install-skills.js';
+import { openCommand } from './commands/open.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -65,6 +66,15 @@ program
     await statusCommand(issueId);
   })
   .addHelpText('after', '\nExamples:\n  orbc status          # list all issues\n  orbc status f1       # show f1 detail');
+
+program
+  .command('open')
+  .description('Open an issue workspace in VS Code')
+  .argument('<issueId>', 'issue ID with f-prefix (e.g. f1)')
+  .action(async (issueId: string) => {
+    await openCommand(issueId);
+  })
+  .addHelpText('after', '\nExample:\n  orbc open f1');
 
 program
   .command('code')

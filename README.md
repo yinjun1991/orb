@@ -17,6 +17,7 @@ orbc ic "Add 2FA"         # create issue f1
 # → refine requirements in issues/f1/issue.md
 # → design the solution:   /orb-architect
 
+orbc open f1              # open the issue workspace in VS Code
 orbc code f1              # AI implements the code plan
 orbc review f1            # automated review→fix loop
 orbc pr f1                # push and create GitHub PR
@@ -110,6 +111,14 @@ Run the developer agent to implement an issue from its code plan. The agent work
 orbc code f1
 ```
 
+### `orbc open f1`
+
+Open `worktrees/f1/f1.code-workspace` in VS Code. This requires the VS Code `code` command to be available in `PATH`.
+
+```sh
+orbc open f1
+```
+
 ### `orbc review f1`
 
 Run the automated review→fix loop. The code-reviewer inspects the diff, files bugs, the developer fixes them, and the loop repeats until no bugs remain (or max rounds is reached).
@@ -172,6 +181,7 @@ project/
 │       └── docs/
 ├── worktrees/                 # isolated worktrees per issue
 │   └── f1/
+│       ├── f1.code-workspace       # VS Code workspace for all issue repos
 │       ├── backend/
 │       └── frontend/
 └── issues/
