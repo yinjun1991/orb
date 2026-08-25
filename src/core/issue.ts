@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { RepoConfig, BaseVersion } from '../types.js';
 
@@ -75,17 +75,130 @@ export function generateBugsIndex(): string {
 export function getRepoHeadCommit(repoPath: string, baseBranch: string, remote?: string): string {
   if (remote) {
     try {
-      execSync(`git remote get-url ${remote}`, { cwd: repoPath, stdio: 'pipe' });
-      execSync(`git fetch ${remote}`, { cwd: repoPath, stdio: 'pipe' });
-      const output = execSync(`git rev-parse remotes/${remote}/${baseBranch}`, { cwd: repoPath, encoding: 'utf-8' });
+      execFileSync('git', ['remote', 'get-url', remote], { cwd: repoPath, stdio: 'pipe' });
+      execFileSync('git', ['fetch', remote], { cwd: repoPath, stdio: 'pipe' });
+      const output = execFileSync('git', ['rev-parse', `remotes/${remote}/${baseBranch}`], {
+        cwd: repoPath,
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
       return output.trim();
     } catch {
       // remote unreachable or branch doesn't track it — fall back to local
     }
   }
 
-  const output = execSync(`git rev-parse ${baseBranch}`, { cwd: repoPath, encoding: 'utf-8' });
-  return output.trim();
+  try {
+    const output = execFileSync('git', ['rev-parse', baseBranch], {
+      cwd: repoPath,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return output.trim();
+  } catch (err: any) {
+    throw new Error(`Cannot resolve base branch "${baseBranch}" in repository ${repoPath}: ${getCommandError(err)}`);
+  }
+}
+
+interface PreparedRepo {
+  config: RepoConfig;
+  name: string;
+  path: string;
+  worktreePath: string;
+  commit: string;
+}
+
+function prepareRepos(projectRoot: string, issueId: string, repos: RepoConfig[], worktreesDir: string): PreparedRepo[] {
+  const names = new Set<string>();
+
+  const preparedRepos = repos.map(repo => {
+    const repoPath = path.resolve(projectRoot, repo.path);
+    const repoName = path.basename(repoPath);
+
+    if (!fs.existsSync(repoPath)) {
+      throw new Error(`Repository path does not exist: ${repo.path} (${repoPath})`);
+    }
+    if (!fs.statSync(repoPath).isDirectory()) {
+      throw new Error(`Repository path is not a directory: ${repo.path} (${repoPath})`);
+    }
+    if (names.has(repoName)) {
+      throw new Error(`Repository name "${repoName}" is duplicated in .orb.yaml`);
+    }
+    names.add(repoName);
+
+    try {
+      const output = execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
+        cwd: repoPath,
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      if (output.trim() !== 'true') throw new Error('not a worktree');
+    } catch (err: any) {
+      throw new Error(`Repository path is not a Git worktree: ${repo.path} (${repoPath}): ${getCommandError(err)}`);
+    }
+
+    const worktreePath = path.join(worktreesDir, repoName);
+    if (fs.existsSync(worktreePath)) {
+      throw new Error(`Worktree path already exists: ${worktreePath}`);
+    }
+    if (gitBranchExists(repoPath, issueId)) {
+      throw new Error(`Branch "${issueId}" already exists in repository ${repo.path}`);
+    }
+
+    return { config: repo, name: repoName, path: repoPath, worktreePath };
+  });
+
+  return preparedRepos.map(repo => ({
+    ...repo,
+    commit: getRepoHeadCommit(repo.path, repo.config.base_branch, repo.config.remote),
+  }));
+}
+
+function gitBranchExists(repoPath: string, branch: string): boolean {
+  try {
+    execFileSync('git', ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`], { cwd: repoPath, stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function rollbackIssue(issueDir: string, worktreesDir: string, issueId: string, attemptedRepos: PreparedRepo[]): string[] {
+  const repos = [...attemptedRepos].reverse();
+  const errors: string[] = [];
+
+  for (const repo of repos) {
+    try {
+      execFileSync('git', ['worktree', 'remove', repo.worktreePath, '--force'], { cwd: repo.path, stdio: 'pipe' });
+    } catch {
+      // Cleanup below handles worktrees that were only partially registered.
+    }
+  }
+
+  for (const target of [issueDir, worktreesDir]) {
+    try {
+      fs.removeSync(target);
+    } catch (err: any) {
+      errors.push(`cannot remove ${target}: ${getCommandError(err)}`);
+    }
+  }
+
+  for (const repo of repos) {
+    try {
+      execFileSync('git', ['worktree', 'prune'], { cwd: repo.path, stdio: 'pipe' });
+      if (gitBranchExists(repo.path, issueId)) {
+        execFileSync('git', ['branch', '-D', issueId], { cwd: repo.path, stdio: 'pipe' });
+      }
+    } catch (err: any) {
+      errors.push(`cannot clean ${repo.config.path}: ${getCommandError(err)}`);
+    }
+  }
+
+  return errors;
+}
+
+function getCommandError(err: any): string {
+  return String(err.stderr || err.message || err).trim();
 }
 
 /**
@@ -103,62 +216,78 @@ export function createIssue(projectRoot: string, issueId: string, title: string,
   const issuesDir = path.join(projectRoot, ISSUES_DIR);
   const issueDir = path.join(issuesDir, issueId);
   const bugsDir = path.join(issueDir, 'bugs');
-
-  // Create directories
-  fs.ensureDirSync(issueDir);
-  fs.ensureDirSync(bugsDir);
-
-  // Write standard files from templates
-  fs.writeFileSync(path.join(issueDir, ISSUE_FILE), renderTemplate(TEMPLATE_ISSUE, title));
-  fs.writeFileSync(path.join(issueDir, TECH_DESIGN_FILE), renderTemplate(TEMPLATE_TECH_DESIGN, title));
-  fs.writeFileSync(path.join(issueDir, IMPLEMENTION_PLAN_FILE), renderTemplate(TEMPLATE_IMPLEMENTION_PLAN, title));
-
-  // Write bugs.md index
-  fs.writeFileSync(path.join(issueDir, BUGS_INDEX), generateBugsIndex());
-
-  // Collect base versions and create worktrees
-  const baseVersions: BaseVersion = {};
   const worktreesDir = path.join(projectRoot, WORKTREES_DIR, issueId);
-  fs.ensureDirSync(worktreesDir);
 
-  for (const repo of repos) {
-    const repoPath = path.resolve(projectRoot, repo.path);
-    const commit = getRepoHeadCommit(repoPath, repo.base_branch, repo.remote);
-    baseVersions[path.basename(repo.path)] = commit;
-
-    // Create git worktree
-    const worktreePath = path.join(worktreesDir, path.basename(repo.path));
-    execSync(`git worktree add -b ${issueId} ${worktreePath} ${commit}`, { cwd: repoPath, stdio: 'inherit' });
-
-    // Copy untracked files/directories (e.g. .env, .vscode) from source repo to worktree
-    for (const file of repo.copy_files || []) {
-      const src = path.join(repoPath, file);
-      const dest = path.join(worktreePath, file);
-      if (fs.existsSync(src)) {
-        fs.copySync(src, dest, { overwrite: true });
-      }
-    }
+  if (fs.existsSync(issueDir) || fs.existsSync(worktreesDir)) {
+    throw new Error(`Issue ${issueId} already has files in issues/ or worktrees/`);
   }
 
-  // Write VS Code workspace file
-  const workspaceFile = path.join(worktreesDir, `${issueId}.code-workspace`);
-  const workspaceContent = {
-    folders: repos.map(r => ({
-      path: path.basename(r.path),
-      name: path.basename(r.path),
-    })),
-  };
-  fs.writeFileSync(workspaceFile, JSON.stringify(workspaceContent, null, 2) + '\n');
+  // Resolve every repo before writing files or creating branches, so invalid
+  // configuration cannot leave a partially-created issue behind.
+  const preparedRepos = prepareRepos(projectRoot, issueId, repos, worktreesDir);
+  const attemptedRepos: PreparedRepo[] = [];
 
-  // Write base_version.json
-  fs.writeFileSync(path.join(issueDir, BASE_VERSION_FILE), generateBaseVersion(baseVersions));
+  try {
+    fs.ensureDirSync(bugsDir);
+    fs.ensureDirSync(worktreesDir);
 
-  // Append to issues.md index
-  const indexPath = path.join(issuesDir, ISSUES_INDEX);
-  const entry = `| ${issueId} | ${title} | defining | |\n`;
-  if (fs.existsSync(indexPath)) {
-    fs.appendFileSync(indexPath, entry);
-  } else {
-    fs.writeFileSync(indexPath, readTemplate(TEMPLATE_ISSUES_INDEX) + '\n' + entry);
+    // Write standard files from templates
+    fs.writeFileSync(path.join(issueDir, ISSUE_FILE), renderTemplate(TEMPLATE_ISSUE, title));
+    fs.writeFileSync(path.join(issueDir, TECH_DESIGN_FILE), renderTemplate(TEMPLATE_TECH_DESIGN, title));
+    fs.writeFileSync(path.join(issueDir, IMPLEMENTION_PLAN_FILE), renderTemplate(TEMPLATE_IMPLEMENTION_PLAN, title));
+
+    // Write bugs.md index
+    fs.writeFileSync(path.join(issueDir, BUGS_INDEX), generateBugsIndex());
+
+    // Collect base versions and create worktrees
+    const baseVersions: BaseVersion = {};
+
+    for (const repo of preparedRepos) {
+      baseVersions[repo.name] = repo.commit;
+      attemptedRepos.push(repo);
+
+      // Create git worktree
+      execFileSync('git', ['worktree', 'add', '-b', issueId, repo.worktreePath, repo.commit], {
+        cwd: repo.path,
+        stdio: 'inherit',
+      });
+
+      // Copy untracked files/directories (e.g. .env, .vscode) from source repo to worktree
+      for (const file of repo.config.copy_files || []) {
+        const src = path.join(repo.path, file);
+        const dest = path.join(repo.worktreePath, file);
+        if (fs.existsSync(src)) {
+          fs.copySync(src, dest, { overwrite: true });
+        }
+      }
+    }
+
+    // Write VS Code workspace file
+    const workspaceFile = path.join(worktreesDir, `${issueId}.code-workspace`);
+    const workspaceContent = {
+      folders: preparedRepos.map(repo => ({
+        path: repo.name,
+        name: repo.name,
+      })),
+    };
+    fs.writeFileSync(workspaceFile, JSON.stringify(workspaceContent, null, 2) + '\n');
+
+    // Write base_version.json
+    fs.writeFileSync(path.join(issueDir, BASE_VERSION_FILE), generateBaseVersion(baseVersions));
+
+    // Append to issues.md index only after the issue is complete.
+    const indexPath = path.join(issuesDir, ISSUES_INDEX);
+    const entry = `| ${issueId} | ${title} | defining | |\n`;
+    if (fs.existsSync(indexPath)) {
+      fs.appendFileSync(indexPath, entry);
+    } else {
+      fs.writeFileSync(indexPath, readTemplate(TEMPLATE_ISSUES_INDEX) + '\n' + entry);
+    }
+  } catch (err) {
+    const rollbackErrors = rollbackIssue(issueDir, worktreesDir, issueId, attemptedRepos);
+    if (rollbackErrors.length > 0) {
+      throw new Error(`${getCommandError(err)}; rollback incomplete: ${rollbackErrors.join('; ')}`);
+    }
+    throw err;
   }
 }
